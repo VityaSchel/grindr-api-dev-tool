@@ -4,5 +4,8 @@
 		"*.css": "tailwindcss"
 	},
 	"editor.formatOnSave": true,
-	"editor.detectIndentation": false
+	"editor.detectIndentation": false,
+	"editor.quickSuggestions": {
+		"strings": "on"
+	}
 }
