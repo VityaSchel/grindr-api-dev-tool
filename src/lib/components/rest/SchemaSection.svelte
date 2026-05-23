@@ -4,6 +4,7 @@
 	import SchemaLink from "./SchemaLink.svelte";
 	import Markdown from "$lib/components/Markdown.svelte";
 	import { SvelteSet } from "svelte/reactivity";
+	import WIPBadge from "$lib/components/WIPBadge.svelte";
 
 	let { name }: { name: string } = $props();
 
@@ -51,11 +52,7 @@
 	<div class="mb-2 flex flex-wrap items-center gap-2">
 		<h3 class="font-mono text-sm font-semibold">{displayName}</h3>
 		{#if schema?.["x-wip"]}
-			<span
-				class="rounded bg-yellow-100 px-1.5 py-0.5 text-xs font-medium text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400"
-			>
-				WIP
-			</span>
+			<WIPBadge />
 		{/if}
 		{#if displayName !== name}
 			<span class="font-mono text-xs text-muted-foreground">({name})</span>

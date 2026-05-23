@@ -7,6 +7,11 @@
 	import ResponsesTable from "./ResponsesTable.svelte";
 	import ErrorsTable from "./ErrorsTable.svelte";
 	import SchemaLink from "./SchemaLink.svelte";
+	import IdempotentBadge from "$lib/components/IdempotentBadge.svelte";
+	import DeprecatedBadge from "$lib/components/DeprecatedBadge.svelte";
+	import AuthRequiredBadge from "$lib/components/AuthRequiredBadge.svelte";
+	import LegacyBadge from "$lib/components/LegacyBadge.svelte";
+	import WIPBadge from "$lib/components/WIPBadge.svelte";
 
 	const METHOD_COLORS: Record<string, string> = {
 		get: "oklch(0.7 0.1702 146.12)",
@@ -48,18 +53,10 @@
 
 		<div class="flex flex-wrap items-center gap-2">
 			{#if op["x-wip"]}
-				<span
-					class="rounded bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400"
-				>
-					WIP
-				</span>
+				<WIPBadge />
 			{/if}
 			{#if op["x-legacy"]}
-				<span
-					class="rounded bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground"
-				>
-					Legacy
-				</span>
+				<LegacyBadge />
 			{/if}
 			{#if op["x-paid"]}
 				<span
@@ -69,25 +66,13 @@
 				</span>
 			{/if}
 			{#if op["x-idempotent"]}
-				<span
-					class="rounded bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800 dark:bg-blue-900/30 dark:text-blue-400"
-				>
-					Idempotent
-				</span>
+				<IdempotentBadge />
 			{/if}
 			{#if op.deprecated}
-				<span
-					class="rounded bg-red-100 px-2 py-0.5 text-xs font-medium text-red-800 dark:bg-red-900/30 dark:text-red-400"
-				>
-					Deprecated
-				</span>
+				<DeprecatedBadge />
 			{/if}
 			{#if op.security?.length}
-				<span
-					class="rounded border border-border px-2 py-0.5 text-xs font-medium text-muted-foreground"
-				>
-					🔒 Auth required
-				</span>
+				<AuthRequiredBadge />
 			{/if}
 		</div>
 	</div>

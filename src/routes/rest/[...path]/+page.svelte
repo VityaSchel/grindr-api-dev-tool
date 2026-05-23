@@ -14,6 +14,7 @@
 	import OperationSection from "$lib/components/rest/OperationSection.svelte";
 	import SchemaSection from "$lib/components/rest/SchemaSection.svelte";
 	import ParamTable from "$lib/components/rest/ParamTable.svelte";
+	import WIPBadge from "$lib/components/WIPBadge.svelte";
 
 	const tagName = $derived(page.params.path ?? "");
 	const pathKey = $derived("/" + tagName);
@@ -68,11 +69,7 @@
 						{tagName.replace(/\//g, " / ")}
 					</h1>
 					{#if tagDef?.["x-wip"]}
-						<span
-							class="rounded bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400"
-						>
-							WIP
-						</span>
+						<WIPBadge />
 					{/if}
 				</div>
 
