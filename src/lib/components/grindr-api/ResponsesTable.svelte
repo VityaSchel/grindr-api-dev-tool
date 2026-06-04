@@ -29,9 +29,9 @@
 					>
 						{code}
 					</td>
-					<td class="px-3 py-2 align-top text-xs text-muted-foreground"
-						>{resp.description}</td
-					>
+					<td class="px-3 py-2 align-top text-xs text-muted-foreground">
+						{resp.description}
+					</td>
 					<td class="px-3 py-2 align-top">
 						{#if resp.content}
 							{#each Object.values(resp.content) as mt, mi (mi)}

@@ -11,9 +11,10 @@
 	} from "$lib/openapi";
 	import Markdown from "$lib/components/Markdown.svelte";
 	import { Separator } from "$lib/components/ui/separator";
-	import OperationSection from "$lib/components/rest/OperationSection.svelte";
-	import SchemaSection from "$lib/components/rest/SchemaSection.svelte";
-	import ParamTable from "$lib/components/rest/ParamTable.svelte";
+	import RequestBuilder from "$lib/components/grindr-api/RequestBuilder.svelte";
+	import OperationSection from "$lib/components/grindr-api/OperationSection.svelte";
+	import SchemaSection from "$lib/components/grindr-api/SchemaSection.svelte";
+	import ParamTable from "$lib/components/grindr-api/ParamTable.svelte";
 	import WIPBadge from "$lib/components/WIPBadge.svelte";
 
 	const tagName = $derived(page.params.path ?? "");
@@ -47,7 +48,7 @@
 				<div class="mt-2 flex flex-wrap gap-1.5">
 					{#each uniqueTags as tag (tag)}
 						<a
-							href={resolve(`/rest/${tag}`)}
+							href={resolve(`/grindr-api/${tag}`)}
 							class="rounded-full bg-muted px-2 py-0.5 font-mono text-xs text-muted-foreground hover:bg-muted/80 hover:text-foreground"
 						>
 							{tag}
@@ -56,6 +57,16 @@
 				</div>
 			</div>
 
+			{#key pathKey}
+				<RequestBuilder path={pathKey} {operations} />
+			{/key}
+
+			<Separator class="my-8" />
+			<h2
+				class="mb-4 text-sm font-semibold tracking-wide text-muted-foreground uppercase"
+			>
+				Documentation
+			</h2>
 			{#each operations as op, i (op.method)}
 				{#if i > 0}
 					<Separator class="my-8" />

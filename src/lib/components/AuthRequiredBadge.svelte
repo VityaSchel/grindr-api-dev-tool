@@ -5,7 +5,7 @@
 
 <Badge
 	variant="outline"
-	href="/rest/authentication"
+	href="/grindr-api/authentication"
 	class="border-red-800/20 bg-red-600/20 hover:bg-red-600/30! hover:text-black!"
 >
 	<KeyIcon />

@@ -7,7 +7,7 @@
 <Tooltip.Provider>
 	<Tooltip.Root>
 		<Tooltip.Trigger class="flex">
-			<Badge variant="outline" class="bg-blue-600/20 border-blue-800/20">
+			<Badge variant="outline" class="border-blue-800/20 bg-blue-600/20">
 				<ArrowsClockwiseIcon />
 				Idempotent
 			</Badge>

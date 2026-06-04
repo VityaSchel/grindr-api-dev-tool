@@ -25,10 +25,8 @@
 
 	let { op, path }: { op: Operation; path: string } = $props();
 
-	// Map x-query-groups entries to their render-on-tag page so we can link there
 	const queryGroupLinks = $derived(
 		(op["x-query-groups"] ?? []).map((groupName) => {
-			// Find which tag this group renders on
 			const allGroups = (op.tags ?? []).flatMap((tag) =>
 				getParamGroupsForTag(tag).map((g) => ({ ...g, tag })),
 			);
@@ -149,10 +147,11 @@
 			{#each queryGroupLinks as g, gi (g.name)}
 				{#if gi > 0}<span>, </span>{/if}
 				<a
-					href={resolve(`/rest/${g.tag}`) + `#${g.name}`}
+					href={resolve(`/grindr-api/${g.tag}`) + `#${g.name}`}
 					class="font-mono text-xs text-blue-500 hover:underline dark:text-blue-400"
-					>{g.name}</a
 				>
+					{g.name}
+				</a>
 			{/each}
 		</div>
 	{/if}
@@ -160,9 +159,10 @@
 	{#if op.parameters.length}
 		<div class="mb-5">
 			<h3 class="mb-2 text-sm font-semibold">
-				Parameters <span class="font-normal text-muted-foreground"
-					>({op.parameters.length})</span
-				>
+				Parameters
+				<span class="font-normal text-muted-foreground">
+					({op.parameters.length})
+				</span>
 			</h3>
 			<ParamTable parameters={op.parameters} />
 		</div>

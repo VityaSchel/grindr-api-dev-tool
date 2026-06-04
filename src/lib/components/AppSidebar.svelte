@@ -54,7 +54,7 @@
 				<Sidebar.MenuSubButton>
 					{#snippet child({ props })}
 						<a
-							href={resolve(`/rest/${item.url.substring(1)}`)}
+							href={resolve(`/grindr-api/${item.url.substring(1)}`)}
 							{...props}
 							class={["max-w-full", props.class]}
 						>
@@ -86,7 +86,7 @@
 						{#snippet child({ props })}
 							<SidebarLink
 								href={resolve(
-									`/rest/${entry.kind === "standalone" ? entry.title : entry.label}`,
+									`/grindr-api/${entry.kind === "standalone" ? entry.title : entry.label}`,
 								)}
 								{...props}
 							>
@@ -107,7 +107,7 @@
 									<Sidebar.MenuSubButton class="font-medium">
 										{#snippet child({ props })}
 											<SidebarLink
-												href={resolve(`/rest/${subGroup.tagName}`)}
+												href={resolve(`/grindr-api/${subGroup.tagName}`)}
 												{...props}
 											>
 												{toTitle(subGroup.title)}

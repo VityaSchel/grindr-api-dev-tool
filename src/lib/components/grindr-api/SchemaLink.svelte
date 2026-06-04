@@ -38,7 +38,7 @@
 	const info = $derived(getLinkInfo(schema));
 	const link = $derived(
 		info.tag && info.name
-			? resolve(`/rest/${info.tag}`) + `#${info.name}`
+			? resolve(`/grindr-api/${info.tag}`) + `#${info.name}`
 			: null,
 	);
 </script>
@@ -47,10 +47,11 @@
 	<a
 		href={link}
 		class="font-mono text-xs text-blue-500 hover:underline dark:text-blue-400"
-		>{info.label}</a
-	>{info.suffix}
-{:else}
-	<span class="font-mono text-xs text-muted-foreground"
-		>{info.label}{info.suffix}</span
 	>
+		{info.label}
+	</a>{info.suffix}
+{:else}
+	<span class="font-mono text-xs text-muted-foreground">
+		{info.label}{info.suffix}
+	</span>
 {/if}
