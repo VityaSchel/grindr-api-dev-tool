@@ -1,18 +1,18 @@
 {
 	"$schema": "https://schema.tauri.app/config/2",
-	"productName": "grindr-api-dev-tool",
+	"productName": "Grindr API developer tool",
 	"version": "0.1.0",
 	"identifier": "org.opengrind.devtool",
 	"build": {
 		"beforeDevCommand": "bun run dev:web",
-		"devUrl": "http://localhost:1420",
+		"devUrl": "http://localhost:1430",
 		"beforeBuildCommand": "bun run build",
 		"frontendDist": "../build"
 	},
 	"app": {
 		"windows": [
 			{
-				"title": "grindr-api-dev-tool",
+				"title": "Grindr API developer tool",
 				"width": 800,
 				"height": 600
 			}
