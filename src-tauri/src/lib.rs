@@ -3,13 +3,15 @@ mod session;
 mod state;
 mod store;
 
+use std::collections::HashMap;
+
 use grindr::{build_user_agent, probe_emulation, DeviceInfo};
 use tauri::Manager;
 use tokio::sync::Mutex;
 
 use crate::commands::{
-    add_account, delete_account, generate_device, get_active, list_accounts, send_request,
-    set_active,
+    add_account, cancel_request, delete_account, generate_device, get_active, list_accounts,
+    send_request, set_active,
 };
 use crate::session::activate_stored;
 use crate::state::AppState;
@@ -43,6 +45,7 @@ pub fn run() {
                 noauth_client,
                 noauth_device: device,
                 noauth_ua: ua,
+                inflight: Mutex::new(HashMap::new()),
             });
 
             if let Some(id) = active {
@@ -64,6 +67,7 @@ pub fn run() {
             set_active,
             delete_account,
             send_request,
+            cancel_request,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

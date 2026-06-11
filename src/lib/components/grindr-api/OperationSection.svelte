@@ -1,7 +1,8 @@
 <script lang="ts">
-	import { resolve } from "$app/paths";
+	import { grindrApiHref } from "$lib/links";
 	import type { Operation } from "$lib/openapi";
 	import { getParamGroupsForTag } from "$lib/openapi";
+	import { METHOD_COLORS } from "$lib/methods";
 	import Markdown from "$lib/components/Markdown.svelte";
 	import ParamTable from "./ParamTable.svelte";
 	import ResponsesTable from "./ResponsesTable.svelte";
@@ -13,17 +14,26 @@
 	import LegacyBadge from "$lib/components/LegacyBadge.svelte";
 	import WIPBadge from "$lib/components/WIPBadge.svelte";
 
-	const METHOD_COLORS: Record<string, string> = {
-		get: "oklch(0.7 0.1702 146.12)",
-		post: "oklch(0.7 0.1258 72)",
-		put: "oklch(0.7 0.1455 253.06)",
-		delete: "oklch(0.7 0.185 31.76)",
-		patch: "oklch(0.7 0.1949 316.59)",
-		head: "oklch(0.65 0.01 220)",
-		options: "oklch(0.65 0.01 220)",
-	};
+	// `currentPage` = this operation belongs to the page you're already on (the endpoint
+	// page itself), so its path is shown as plain text rather than a self-link. On tag
+	// pages the operations are *other* endpoints, so their paths link to those pages.
+	let {
+		op,
+		path,
+		currentPage = false,
+	}: { op: Operation; path: string; currentPage?: boolean } = $props();
 
-	let { op, path }: { op: Operation; path: string } = $props();
+	// Link to this operation's own per-method endpoint tab (used on tag pages, where
+	// the same path may appear once per HTTP method).
+	const pathHref = $derived(
+		grindrApiHref(path.replace(/^\//, ""), { method: op.method }),
+	);
+
+	/** A `x-see-also` value is either a ready `/grindr-api/...` href or a raw endpoint path. */
+	function seeAlsoHref(ref: string): string {
+		if (ref.startsWith("/grindr-api/")) return ref;
+		return grindrApiHref(ref.replace(/^\//, ""));
+	}
 
 	const queryGroupLinks = $derived(
 		(op["x-query-groups"] ?? []).map((groupName) => {
@@ -86,7 +96,17 @@
 		>
 			{op.method.toUpperCase()}
 		</span>
-		<code class="font-mono text-sm text-muted-foreground">{path}</code>
+		{#if currentPage}
+			<code class="font-mono text-sm text-muted-foreground">{path}</code>
+		{:else}
+			<a
+				href={pathHref}
+				class="font-mono text-sm text-blue-500 hover:underline dark:text-blue-400"
+				title="Open this endpoint"
+			>
+				{path}
+			</a>
+		{/if}
 	</div>
 
 	{#if op["x-wip-note"]}
@@ -135,7 +155,10 @@
 		<div class="mb-4 text-sm text-muted-foreground">
 			<span class="font-medium">See also: </span>
 			{#each op["x-see-also"] as ref, j (ref)}
-				<span class="font-mono text-xs">{ref}</span
+				<a
+					href={seeAlsoHref(ref)}
+					class="font-mono text-xs text-blue-500 hover:underline dark:text-blue-400"
+					>{ref.replace(/^\/grindr-api\//, "")}</a
 				>{#if j < (op["x-see-also"]?.length ?? 0) - 1}<span>, </span>{/if}
 			{/each}
 		</div>
@@ -147,7 +170,7 @@
 			{#each queryGroupLinks as g, gi (g.name)}
 				{#if gi > 0}<span>, </span>{/if}
 				<a
-					href={resolve(`/grindr-api/${g.tag}`) + `#${g.name}`}
+					href={grindrApiHref(g.tag, { anchor: g.name })}
 					class="font-mono text-xs text-blue-500 hover:underline dark:text-blue-400"
 				>
 					{g.name}

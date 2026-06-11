@@ -1,7 +1,9 @@
 <script lang="ts">
 	import * as DropdownMenu from "$lib/components/ui/dropdown-menu";
 	import { Button } from "$lib/components/ui/button";
+	import { goto } from "$app/navigation";
 	import { accounts } from "$lib/accounts.svelte";
+	import { grindrApiHref, CUSTOM_TAB_PATH } from "$lib/links";
 	import AddAccountDialog from "./AddAccountDialog.svelte";
 	import UserCircleIcon from "phosphor-svelte/lib/UserCircleIcon";
 	import CaretUpDownIcon from "phosphor-svelte/lib/CaretUpDownIcon";
@@ -43,9 +45,20 @@
 	class="flex h-12 shrink-0 items-center justify-between gap-2 border-b px-3"
 	data-slot="navbar"
 >
-	<span class="truncate text-sm font-medium text-muted-foreground">
-		Grindr API
-	</span>
+	<div class="flex min-w-0 items-center gap-4">
+		<span class="truncate text-sm font-medium text-muted-foreground">
+			Grindr API
+		</span>
+		<Button
+			variant="outline"
+			size="xs"
+			class="gap-2"
+			onclick={() => goto(grindrApiHref(CUSTOM_TAB_PATH))}
+		>
+			<PlusIcon />
+			<span class="hidden sm:inline">Custom request</span>
+		</Button>
+	</div>
 
 	<DropdownMenu.Root>
 		<DropdownMenu.Trigger>

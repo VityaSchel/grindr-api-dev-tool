@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { resolve } from "$app/paths";
+	import { grindrApiHref } from "$lib/links";
 	import { schemaPageTag } from "$lib/openapi";
 	import type { SchemaObject } from "$lib/openapi";
 
@@ -38,7 +38,7 @@
 	const info = $derived(getLinkInfo(schema));
 	const link = $derived(
 		info.tag && info.name
-			? resolve(`/grindr-api/${info.tag}`) + `#${info.name}`
+			? grindrApiHref(info.tag, { anchor: info.name })
 			: null,
 	);
 </script>

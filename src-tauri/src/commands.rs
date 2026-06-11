@@ -1,12 +1,17 @@
+use std::time::Duration;
+
 use grindr::{DeviceInfo, GrindrClient, GrindrHeaders, Method};
 use serde::Serialize;
 use tauri::AppHandle;
+use tokio::sync::oneshot;
 
 use crate::session::{activate_stored, partial_session, set_active_client};
 use crate::state::AppState;
 use crate::store::{AccountInfo, StoredAccount};
 
 const BASE_URL: &str = "https://grindr.mobi";
+
+const REQUEST_TIMEOUT: Duration = Duration::from_secs(15);
 
 #[derive(Serialize)]
 pub(crate) struct ResponsePayload {
@@ -139,14 +144,52 @@ pub(crate) async fn send_request(
     method: String,
     path: String,
     body: Option<serde_json::Value>,
+    request_id: String,
 ) -> Result<ResponsePayload, String> {
     let method =
         Method::from_bytes(method.as_bytes()).map_err(|e| format!("invalid method: {e}"))?;
 
+    // Register a cancellation handle so `cancel_request` can abort this from the UI.
+    let (cancel_tx, cancel_rx) = oneshot::channel::<()>();
+    state
+        .inflight
+        .lock()
+        .await
+        .insert(request_id.clone(), cancel_tx);
+
+    let result = tokio::select! {
+        res = perform_request(&state, method, &path, body) => res,
+        // Sender dropped by `cancel_request` (or below on completion) resolves this.
+        _ = cancel_rx => Err("request cancelled".to_string()),
+        _ = tokio::time::sleep(REQUEST_TIMEOUT) => Err("request timed out".to_string()),
+    };
+
+    state.inflight.lock().await.remove(&request_id);
+    result
+}
+
+/// Abort an in-flight `send_request` by id. No-op if it already finished.
+#[tauri::command]
+pub(crate) async fn cancel_request(
+    state: tauri::State<'_, AppState>,
+    request_id: String,
+) -> Result<(), String> {
+    state.inflight.lock().await.remove(&request_id);
+    Ok(())
+}
+
+/// The actual HTTP work: authenticated via the active client, or an unauthenticated
+/// fallback for no-auth endpoints. Dropped (cancelled) when its `select!` arm loses.
+async fn perform_request(
+    state: &AppState,
+    method: Method,
+    path: &str,
+    body: Option<serde_json::Value>,
+) -> Result<ResponsePayload, String> {
     let client = state.active_client.lock().await.clone();
     if let Some(client) = client {
         let resp = client
-            .request_authenticated_raw(method, &path, body)
+            .request_authenticated_raw(method, path, body)
             .await
             .map_err(|e| e.to_string())?;
         return Ok(ResponsePayload {

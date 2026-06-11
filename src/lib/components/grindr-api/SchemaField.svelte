@@ -9,7 +9,6 @@
 	import { Toggle } from "$lib/components/ui/toggle";
 	import { Button } from "$lib/components/ui/button";
 	import Markdown from "$lib/components/Markdown.svelte";
-	import { requestState } from "$lib/request-state.svelte";
 	import TrashIcon from "phosphor-svelte/lib/TrashIcon";
 	import PlusIcon from "phosphor-svelte/lib/PlusIcon";
 	import SchemaField from "./SchemaField.svelte";
@@ -80,7 +79,12 @@
 		return "string";
 	}
 
-	function blankItem(s: SchemaObject | undefined): unknown {
+	function isNullable(s: SchemaObject): boolean {
+		return s.nullable === true || normalizeSchema(s).nullable === true;
+	}
+
+	/** Type-appropriate empty value, ignoring nullability. */
+	function typedBlank(s: SchemaObject | undefined): unknown {
 		if (!s) return "";
 		const n = normalizeSchema(s);
 		if (n.oneOf || n.anyOf) return undefined;
@@ -89,6 +93,16 @@
 		if (n.type === "boolean") return false;
 		if (n.type === "integer" || n.type === "number") return 0;
 		return "";
+	}
+
+	/**
+	 * Default for a freshly-materialised field. An empty string/zero still carries
+	 * meaning to the API, so nullable fields start out as the more neutral `null`.
+	 * (Optional fields aren't materialised here at all — only required ones are.)
+	 */
+	function blankItem(s: SchemaObject | undefined): unknown {
+		if (s && isNullable(s)) return null;
+		return typedBlank(s);
 	}
 
 	let {
@@ -105,9 +119,7 @@
 
 	const resolved = $derived(normalizeSchema(schema));
 	const kind = $derived(detectKind(resolved));
-	const nullable = $derived(
-		schema.nullable === true || resolved.nullable === true,
-	);
+	const nullable = $derived(isNullable(schema));
 	const isNull = $derived(value === null);
 	const disabled = $derived(!present);
 	const fieldId = $derived(
@@ -134,10 +146,13 @@
 	);
 
 	// Materialise containers (only while present) so nested fields can write.
+	// A deliberate `null` is left intact (see the NULL toggle) — and a nullable
+	// container defaults to that neutral `null` rather than an empty `{}`/`[]`, which
+	// would still carry meaning to the API. Only non-nullable containers get a blank.
 	$effect(() => {
-		if (!present) return;
-		if (kind === "object" && !objValue) setValue({});
-		else if (kind === "array" && !arrValue) setValue([]);
+		if (!present || isNull) return;
+		if (kind === "object" && !objValue) setValue(nullable ? null : {});
+		else if (kind === "array" && !arrValue) setValue(nullable ? null : []);
 	});
 
 	const objProps = $derived(Object.entries(resolved.properties ?? {}));
@@ -164,10 +179,7 @@
 	const currentStr = $derived(
 		value === undefined || value === null ? "" : String(value),
 	);
-	// All user-driven edits flow through here so the request is marked dirty
-	// (used to decide whether links open in a new window).
 	function edit(v: unknown) {
-		requestState.markDirty();
 		setValue(v);
 	}
 	function pickEnum(v: string | undefined) {
@@ -191,7 +203,8 @@
 		edit(Number.isNaN(n) ? undefined : n);
 	}
 	function setNull(p: boolean) {
-		edit(p ? null : blankItem(resolved));
+		// Un-nulling must yield an editable value, not `null` again.
+		edit(p ? null : typedBlank(resolved));
 	}
 </script>
 
@@ -223,10 +236,7 @@
 					<Checkbox
 						checked={present}
 						disabled={required}
-						onCheckedChange={(c) => {
-							requestState.markDirty();
-							setPresent?.(c === true);
-						}}
+						onCheckedChange={(c) => setPresent?.(c === true)}
 						class="size-3.5"
 						aria-label="Include {label}"
 					/>
@@ -257,7 +267,12 @@
 			pressed={isNull}
 			{disabled}
 			onPressedChange={setNull}
-			class="h-8 shrink-0 px-1.5 font-mono text-[0.65rem] tracking-wide"
+			class={[
+				"h-8 shrink-0 px-1.5 font-mono text-[0.65rem] tracking-wide",
+				{
+					"bg-primary hover:bg-primary-foreground": isNull,
+				},
+			]}
 			aria-label="Set null"
 		>
 			NULL
@@ -266,43 +281,58 @@
 {/snippet}
 
 {#if kind === "object"}
-	<div
-		class={["flex flex-col gap-2", depth > 0 && "border-l border-muted pl-3"]}
-	>
-		{@render fieldHeader()}
-		{#if present && objValue}
-			<div class="flex flex-col gap-3">
-				{#each objProps as [propName, propSchema] (propName)}
-					<SchemaField
-						schema={propSchema}
-						label={propSchema["x-display-name"] ?? propName}
-						required={requiredSet.has(propName)}
-						present={propName in objValue}
-						setPresent={(b) => {
-							if (b) {
-								if (!(propName in objValue))
-									objValue[propName] = blankItem(propSchema);
-							} else {
-								delete objValue[propName];
-							}
-						}}
-						depth={depth + 1}
-						value={objValue[propName]}
-						setValue={(v) => (objValue[propName] = v)}
-					/>
-				{/each}
-				{#if objProps.length === 0}
-					<p class="text-xs text-muted-foreground italic">
-						No defined properties (free-form object).
-					</p>
-				{/if}
+	<div class="flex flex-col gap-2">
+		{#if label !== undefined || nullable}
+			<div class="flex items-start justify-between gap-1.5">
+				<div class="min-w-0 flex-1">{@render fieldHeader()}</div>
+				{@render nullToggle()}
 			</div>
+		{/if}
+		{#if present && !isNull && objValue}
+			{#if objProps.length}
+				<!-- Only the properties are indented under the object, not its header. -->
+				<div
+					class={[
+						"flex flex-col gap-3",
+						depth > 0 && "border-l border-muted pl-3",
+					]}
+				>
+					{#each objProps as [propName, propSchema] (propName)}
+						<SchemaField
+							schema={propSchema}
+							label={propSchema["x-display-name"] ?? propName}
+							required={requiredSet.has(propName)}
+							present={propName in objValue}
+							setPresent={(b) => {
+								if (b) {
+									if (!(propName in objValue))
+										objValue[propName] = blankItem(propSchema);
+								} else {
+									delete objValue[propName];
+								}
+							}}
+							depth={depth + 1}
+							value={objValue[propName]}
+							setValue={(v) => (objValue[propName] = v)}
+						/>
+					{/each}
+				</div>
+			{:else}
+				<p class="text-xs text-muted-foreground italic">
+					No defined properties (free-form object).
+				</p>
+			{/if}
 		{/if}
 	</div>
 {:else if kind === "array"}
 	<div class="flex flex-col gap-2">
-		{@render fieldHeader()}
-		{#if present}
+		{#if label !== undefined || nullable}
+			<div class="flex items-start justify-between gap-1.5">
+				<div class="min-w-0 flex-1">{@render fieldHeader()}</div>
+				{@render nullToggle()}
+			</div>
+		{/if}
+		{#if present && !isNull}
 			{#if arrValue && arrValue.length}
 				<div class="flex flex-col gap-2 border-l border-muted pl-3">
 					{#each arrValue as item, i (i)}
@@ -320,10 +350,7 @@
 								type="button"
 								variant="ghost"
 								size="icon-sm"
-								onclick={() => {
-									requestState.markDirty();
-									arrValue.splice(i, 1);
-								}}
+								onclick={() => arrValue.splice(i, 1)}
 								aria-label="Remove item"
 							>
 								<TrashIcon />
@@ -337,10 +364,7 @@
 					type="button"
 					variant="outline"
 					size="xs"
-					onclick={() => {
-						requestState.markDirty();
-						arrValue?.push(blankItem(itemSchema));
-					}}
+					onclick={() => arrValue?.push(blankItem(itemSchema))}
 				>
 					<PlusIcon /> Add item
 				</Button>
@@ -354,10 +378,7 @@
 			<Select.Root
 				type="single"
 				value={String(variantIdx)}
-				onValueChange={(v) => {
-					requestState.markDirty();
-					variantIdx = Number(v);
-				}}
+				onValueChange={(v) => (variantIdx = Number(v))}
 			>
 				<Select.Trigger class="w-full">
 					{schemaTypeLabel(normalizeSchema(variants[variantIdx] ?? {})) ||

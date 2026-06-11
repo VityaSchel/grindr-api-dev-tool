@@ -44,6 +44,13 @@ export const api = {
 	setActive: (id: string | null) => invoke<void>("set_active", { id }),
 	deleteAccount: (id: string) =>
 		invoke<string | null>("delete_account", { id }),
-	sendRequest: (method: string, path: string, body: unknown | null) =>
-		invoke<ResponsePayload>("send_request", { method, path, body }),
+	sendRequest: (
+		method: string,
+		path: string,
+		body: unknown | null,
+		requestId: string,
+	) =>
+		invoke<ResponsePayload>("send_request", { method, path, body, requestId }),
+	cancelRequest: (requestId: string) =>
+		invoke<void>("cancel_request", { requestId }),
 };

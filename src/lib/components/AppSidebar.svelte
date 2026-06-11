@@ -1,22 +1,16 @@
 <script lang="ts">
-	import { resolve } from "$app/paths";
+	import { grindrApiHref } from "$lib/links";
 	import * as Sidebar from "$lib/components/ui/sidebar";
 	import { Input } from "$lib/components/ui/input";
 	import {
 		navEntries,
+		toTitle,
 		type NavEndpoint,
 		type NavEntry,
 	} from "$lib/components/sidebar";
 	import SidebarLink from "$lib/components/SidebarLink.svelte";
 
 	let filter = $state("");
-
-	export function toTitle(str: string): string {
-		return str
-			.split(/[-_/]/)
-			.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-			.join(" ");
-	}
 
 	const filteredEntries = $derived.by(() => {
 		const q = filter.trim().toLowerCase();
@@ -49,12 +43,14 @@
 
 {#snippet endpointList(items: NavEndpoint[])}
 	<Sidebar.MenuSub>
-		{#each items as item (`${item.url}:${item.title}`)}
+		{#each items as item (`${item.method}:${item.url}`)}
 			<Sidebar.MenuSubItem>
 				<Sidebar.MenuSubButton>
 					{#snippet child({ props })}
 						<a
-							href={resolve(`/grindr-api/${item.url.substring(1)}`)}
+							href={grindrApiHref(item.url.substring(1), {
+								method: item.method,
+							})}
 							{...props}
 							class={["max-w-full", props.class]}
 						>
@@ -85,8 +81,8 @@
 					<Sidebar.MenuButton class="font-medium">
 						{#snippet child({ props })}
 							<SidebarLink
-								href={resolve(
-									`/grindr-api/${entry.kind === "standalone" ? entry.title : entry.label}`,
+								href={grindrApiHref(
+									entry.kind === "standalone" ? entry.title : entry.label,
 								)}
 								{...props}
 							>
@@ -107,7 +103,7 @@
 									<Sidebar.MenuSubButton class="font-medium">
 										{#snippet child({ props })}
 											<SidebarLink
-												href={resolve(`/grindr-api/${subGroup.tagName}`)}
+												href={grindrApiHref(subGroup.tagName)}
 												{...props}
 											>
 												{toTitle(subGroup.title)}

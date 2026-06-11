@@ -3,7 +3,7 @@
 	import { getParamGroupsForTag, resolveGroupParams } from "$lib/openapi";
 	import { accounts } from "$lib/accounts.svelte";
 	import { api } from "$lib/api";
-	import { requestState } from "$lib/request-state.svelte";
+	import { METHOD_COLORS, methodColor } from "$lib/methods";
 	import SchemaField from "./SchemaField.svelte";
 	import JsonView from "./JsonView.svelte";
 	import * as Select from "$lib/components/ui/select";
@@ -14,27 +14,18 @@
 	import { Separator } from "$lib/components/ui/separator";
 	import PaperPlaneTiltIcon from "phosphor-svelte/lib/PaperPlaneTiltIcon";
 	import LockIcon from "phosphor-svelte/lib/LockIcon";
+	import XIcon from "phosphor-svelte/lib/XIcon";
 
 	let { path, operations }: { path: string; operations: Operation[] } =
 		$props();
 
 	const BASE_URL = "https://grindr.mobi";
 
-	const METHOD_COLORS: Record<string, string> = {
-		get: "oklch(0.7 0.1702 146.12)",
-		post: "oklch(0.7 0.1258 72)",
-		put: "oklch(0.7 0.1455 253.06)",
-		delete: "oklch(0.7 0.185 31.76)",
-		patch: "oklch(0.7 0.1949 316.59)",
-		head: "oklch(0.65 0.01 220)",
-		options: "oklch(0.65 0.01 220)",
-	};
-
 	let selectedMethod = $state<string | null>(null);
 	const op = $derived(
 		operations.find((o) => o.method === selectedMethod) ?? operations[0],
 	);
-	const methodColor = $derived(METHOD_COLORS[op.method] ?? "var(--foreground)");
+	const opColor = $derived(methodColor(op.method));
 
 	// ── Parameters ──
 	const pathParams = $derived(op.parameters.filter((p) => p.in === "path"));
@@ -88,7 +79,6 @@
 			bodyView = "form";
 			bodyError = null;
 			tab = "params";
-			requestState.reset();
 		}
 	});
 
@@ -101,7 +91,6 @@
 	});
 
 	function onBodyInput(e: Event & { currentTarget: HTMLTextAreaElement }) {
-		requestState.markDirty();
 		bodyText = e.currentTarget.value;
 		if (bodyText.trim() === "") {
 			bodyError = null;
@@ -205,6 +194,8 @@
 
 	// ── Sending ──
 	let sending = $state(false);
+	let cancelled = $state(false);
+	let currentRequestId = "";
 	let sendError = $state<string | null>(null);
 	let response = $state<{ status: number; body: string } | null>(null);
 	let elapsed = $state<number | null>(null);
@@ -228,10 +219,13 @@
 	async function send() {
 		if (sending || blocked) return;
 		sending = true;
+		cancelled = false;
 		sendError = null;
 		response = null;
 		elapsed = null;
 		tab = "response";
+		const id = crypto.randomUUID();
+		currentRequestId = id;
 		const start = performance.now();
 		try {
 			const body = bodyToSend();
@@ -239,13 +233,21 @@
 				op.method.toUpperCase(),
 				buildPath(),
 				body,
+				id,
 			);
 		} catch (e) {
-			sendError = String(e);
+			// A user-initiated cancel rejects too; show it as neutral, not an error.
+			if (!cancelled) sendError = String(e);
 		} finally {
 			elapsed = Math.round(performance.now() - start);
 			sending = false;
 		}
+	}
+
+	function cancel() {
+		if (!sending) return;
+		cancelled = true;
+		void api.cancelRequest(currentRequestId);
 	}
 </script>
 
@@ -259,7 +261,7 @@
 			>
 				<Select.Trigger
 					class="w-24 shrink-0 font-mono font-bold"
-					style="color: {methodColor}"
+					style="color: {opColor}"
 				>
 					{op.method.toUpperCase()}
 				</Select.Trigger>
@@ -278,7 +280,7 @@
 		{:else}
 			<span
 				class="shrink-0 rounded-lg border px-3 py-1.5 font-mono text-sm font-bold"
-				style="color: {methodColor}">{op.method.toUpperCase()}</span
+				style="color: {opColor}">{op.method.toUpperCase()}</span
 			>
 		{/if}
 
@@ -289,10 +291,16 @@
 			<span class="text-muted-foreground">{BASE_URL}</span>{previewPath}
 		</div>
 
-		<Button onclick={send} disabled={sending || blocked} class="shrink-0">
-			{#if blocked}<LockIcon />{:else}<PaperPlaneTiltIcon />{/if}
-			{#if sending}Sending...{:else}Send{/if}
-		</Button>
+		{#if sending}
+			<Button variant="destructive" onclick={cancel} class="shrink-0">
+				<XIcon /> Cancel
+			</Button>
+		{:else}
+			<Button onclick={send} disabled={blocked} class="shrink-0">
+				{#if blocked}<LockIcon />{:else}<PaperPlaneTiltIcon />{/if}
+				Send
+			</Button>
+		{/if}
 	</div>
 
 	{#if blocked}
@@ -373,8 +381,7 @@
 									: "text-muted-foreground"}>Form</span
 							>
 							<Switch
-								checked={bodyView === "json"}
-								onCheckedChange={setView}
+								bind:checked={() => bodyView === "json", (v) => setView(v)}
 								aria-label="Toggle JSON editor"
 							/>
 							<span
@@ -445,6 +452,8 @@
 					<pre
 						class="max-h-112 overflow-auto rounded-lg border bg-muted/40 p-3 font-mono text-xs whitespace-pre-wrap">{response.body}</pre>
 				{/if}
+			{:else if cancelled}
+				<p class="text-sm text-muted-foreground">Request cancelled.</p>
 			{:else}
 				<p class="text-sm text-muted-foreground">
 					{#if sending}Sending...{:else}No response yet. Hit Send.{/if}
