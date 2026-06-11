@@ -1,38 +1,66 @@
 <script lang="ts">
 	import "./layout.css";
-	import { onMount } from "svelte";
-	import { beforeNavigate } from "$app/navigation";
-	import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
+	import { onMount, untrack } from "svelte";
+	import { page } from "$app/state";
+	import { goto } from "$app/navigation";
 	import * as Resizable from "$lib/components/ui/resizable";
 	import AppSidebar from "$lib/components/AppSidebar.svelte";
 	import Navbar from "$lib/components/Navbar.svelte";
+	import TabBar from "$lib/components/grindr-api/TabBar.svelte";
+	import EndpointView from "$lib/components/grindr-api/EndpointView.svelte";
+	import CustomRequest from "$lib/components/grindr-api/CustomRequest.svelte";
 	import { accounts } from "$lib/accounts.svelte";
-	import { requestState } from "$lib/request-state.svelte";
+	import { tabs, tabKey } from "$lib/tabs.svelte";
+	import { grindrApiHref, METHOD_PARAM, CUSTOM_TAB_PATH } from "$lib/links";
+	import { getOperations } from "$lib/openapi";
 
 	const { children } = $props();
 
-	onMount(() => {
-		// Load saved accounts on launch; failures degrade gracefully to unauthorized.
-		void accounts.load();
+	const activePath = $derived(page.params.path ?? null);
+	const activeMethod = $derived(page.url.searchParams.get(METHOD_PARAM));
+
+	$effect(() => {
+		const path = activePath;
+		const method = activeMethod;
+		if (!path) return;
+		untrack(() => {
+			if (path !== CUSTOM_TAB_PATH && method === null) {
+				const ops = getOperations("/" + path);
+				if (ops.length) {
+					void goto(grindrApiHref(path, { method: ops[0].method }), {
+						replaceState: true,
+					});
+					return;
+				}
+			}
+			tabs.ensure(path, method);
+		});
 	});
 
-	// If the current request has unsaved edits, a link click (to a type or another
-	// endpoint) opens the target in a new window instead of discarding the request.
-	beforeNavigate((nav) => {
-		if (!requestState.dirty || nav.type !== "link" || !nav.to) return;
-		nav.cancel();
-		const { pathname, search, hash } = nav.to.url;
-		const label = `win-${Date.now()}`;
-		try {
-			new WebviewWindow(label, {
-				url: `${pathname}${search}${hash}`,
-				title: "Grindr API",
-				width: 1100,
-				height: 760,
-			});
-		} catch (e) {
-			console.error("failed to open link in a new window", e);
-		}
+	const LINK_PREFIX = "/grindr-api/";
+
+	function backgroundOpen(e: MouseEvent) {
+		if (!(e.button === 1 || e.metaKey || e.ctrlKey)) return;
+		const anchor = (e.target as HTMLElement | null)?.closest("a[href]");
+		const href = anchor?.getAttribute("href");
+		if (!href?.startsWith(LINK_PREFIX)) return;
+		e.preventDefault();
+		e.stopPropagation();
+		const url = new URL(href, location.origin);
+		// Decode the pathname back to the `[...path]` value; method rides in `?m=`.
+		const path = decodeURIComponent(url.pathname.slice(LINK_PREFIX.length));
+		tabs.ensure(path, url.searchParams.get(METHOD_PARAM));
+	}
+
+	onMount(() => {
+		void accounts.load();
+
+		document.addEventListener("click", backgroundOpen, true);
+		document.addEventListener("auxclick", backgroundOpen, true);
+		return () => {
+			document.removeEventListener("click", backgroundOpen, true);
+			document.removeEventListener("auxclick", backgroundOpen, true);
+		};
 	});
 </script>
 
@@ -45,8 +73,28 @@
 	/>
 	<Resizable.Pane class="flex min-w-0 flex-col">
 		<Navbar />
-		<div class="flex min-h-0 flex-1 flex-col gap-4 overflow-auto p-4">
-			{@render children?.()}
+		<TabBar />
+		<div class="flex min-h-0 flex-1 flex-col">
+			{#each tabs.tabs as tab (tabKey(tab.path, tab.method))}
+				<div
+					class={[
+						"min-h-0 flex-1 overflow-auto",
+						!(tab.path === activePath && tab.method === activeMethod) &&
+							"hidden",
+					]}
+				>
+					{#if tab.path === CUSTOM_TAB_PATH}
+						<CustomRequest />
+					{:else}
+						<EndpointView path={tab.path} method={tab.method} />
+					{/if}
+				</div>
+			{/each}
+			{#if activePath === null}
+				<div class="min-h-0 flex-1 overflow-auto p-4">
+					{@render children?.()}
+				</div>
+			{/if}
 		</div>
 	</Resizable.Pane>
 </Resizable.PaneGroup>
