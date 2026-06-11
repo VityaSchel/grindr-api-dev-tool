@@ -1560,7 +1560,7 @@ dependencies = [
 
 [[package]]
 name = "grindr-api-dev-tool"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "grindr",
  "serde",
