@@ -204,10 +204,31 @@ export function getTag(name: string): Tag | undefined {
 // ─── Schema lookups ───────────────────────────────────────────────────────────
 
 export function getSchema(name: string): SchemaObject | undefined {
-	return (schema.components.schemas as unknown as Record<string, SchemaObject>)[
-		name
-	];
+	return (schema.components.schemas as unknown as Record<string, SchemaObject>)[name];
 }
+
+/** Return the tag page this schema is rendered on (from x-render-on-tag). */
+export function schemaPageTag(name: string): string | undefined {
+	return getSchema(name)?.["x-render-on-tag"];
+}
+
+/** Return all schemas assigned to the given tag page, sorted by display name. */
+export function getSchemasForTag(
+	tagName: string,
+): Array<{ name: string; schema: SchemaObject }> {
+	return Object.entries(
+		schema.components.schemas as unknown as Record<string, SchemaObject>,
+	)
+		.filter(([, s]) => s["x-render-on-tag"] === tagName)
+		.map(([name, s]) => ({ name, schema: s }))
+		.sort((a, b) => {
+			const dA = a.schema["x-display-name"] ?? a.name;
+			const dB = b.schema["x-display-name"] ?? b.name;
+			return dA.localeCompare(dB);
+		});
+}
+
+// ─── Parameter groups ─────────────────────────────────────────────────────────
 
 export function getParamGroupsForTag(
 	tagName: string,
