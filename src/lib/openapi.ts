@@ -1,4 +1,30 @@
-import schema from "$lib/schema/openapi.json";
+import { isTauri } from "@tauri-apps/api/core";
+import { api } from "$lib/api";
+
+export const OPENAPI_URL = "https://opengrind.org/openapi.json";
+
+type OpenApiDocument = {
+	paths: Record<string, unknown>;
+	tags: Tag[];
+	components: { schemas: Record<string, unknown> };
+} & Record<string, unknown>;
+
+let schema: OpenApiDocument;
+
+export async function loadOpenApi(): Promise<void> {
+	if (isTauri()) {
+		schema = JSON.parse(await api.fetchOpenapi());
+	} else {
+		const resp = await fetch("/openapi.json");
+		if (!resp.ok)
+			throw new Error(`${OPENAPI_URL} returned HTTP ${resp.status}`);
+		schema = await resp.json();
+	}
+}
+
+export function openapiDocument(): OpenApiDocument {
+	return schema;
+}
 
 export const HTTP_METHODS = [
 	"get",
@@ -16,9 +42,12 @@ export function resolveRef(ref: string): unknown {
 	return ref
 		.replace(/^#\//, "")
 		.split("/")
-		.reduce((obj: Record<string, unknown>, key) => {
-			return obj[key] as Record<string, unknown>;
-		}, schema as unknown as Record<string, unknown>);
+		.reduce(
+			(obj: Record<string, unknown>, key) => {
+				return obj[key] as Record<string, unknown>;
+			},
+			schema as unknown as Record<string, unknown>,
+		);
 }
 
 export type SchemaObject = {
@@ -132,7 +161,12 @@ export function getOperations(pathKey: string): Operation[] {
 		const raw = pathItem[method];
 		if (!raw) return [];
 		return [
-			{ ...raw, method, tags: raw.tags ?? [], parameters: resolveParams(raw) } as Operation,
+			{
+				...raw,
+				method,
+				tags: raw.tags ?? [],
+				parameters: resolveParams(raw),
+			} as Operation,
 		];
 	});
 }
@@ -169,43 +203,21 @@ export function getTag(name: string): Tag | undefined {
 
 // ─── Schema lookups ───────────────────────────────────────────────────────────
 
-/** Get a schema definition by component name. */
 export function getSchema(name: string): SchemaObject | undefined {
-	return (schema.components.schemas as unknown as Record<string, SchemaObject>)[name];
+	return (schema.components.schemas as unknown as Record<string, SchemaObject>)[
+		name
+	];
 }
 
-/** Return the tag page this schema is rendered on (from x-render-on-tag). */
-export function schemaPageTag(name: string): string | undefined {
-	return getSchema(name)?.["x-render-on-tag"];
-}
-
-/** Return all schemas assigned to the given tag page, sorted by display name. */
-export function getSchemasForTag(
-	tagName: string,
-): Array<{ name: string; schema: SchemaObject }> {
-	return Object.entries(
-		schema.components.schemas as unknown as Record<string, SchemaObject>,
-	)
-		.filter(([, s]) => s["x-render-on-tag"] === tagName)
-		.map(([name, s]) => ({ name, schema: s }))
-		.sort((a, b) => {
-			const dA = a.schema["x-display-name"] ?? a.name;
-			const dB = b.schema["x-display-name"] ?? b.name;
-			return dA.localeCompare(dB);
-		});
-}
-
-// ─── Parameter groups ─────────────────────────────────────────────────────────
-
-/** Return parameter groups that render on the given tag page. */
 export function getParamGroupsForTag(
 	tagName: string,
 ): Array<{ name: string; group: ParameterGroup }> {
-	const groups = (
-		schema as unknown as {
-			"x-parameter-groups"?: Record<string, ParameterGroup>;
-		}
-	)["x-parameter-groups"] ?? {};
+	const groups =
+		(
+			schema as unknown as {
+				"x-parameter-groups"?: Record<string, ParameterGroup>;
+			}
+		)["x-parameter-groups"] ?? {};
 	return Object.entries(groups)
 		.filter(([, g]) => g["x-render-on-tag"] === tagName)
 		.map(([name, group]) => ({ name, group }));

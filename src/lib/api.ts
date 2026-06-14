@@ -37,6 +37,7 @@ export type ResponsePayload = { status: number; body: string };
 // Tauri v2 commands default to `ArgumentCase::Camel` (Rust `auth_token` = js `authToken`)
 export const api = {
 	generateDevice: () => invoke<DeviceInfo>("generate_device"),
+	fetchOpenapi: () => invoke<string>("fetch_openapi"),
 	listAccounts: () => invoke<AccountInfo[]>("list_accounts"),
 	getActive: () => invoke<string | null>("get_active"),
 	addAccount: (email: string, authToken: string, device: DeviceInfo | null) =>

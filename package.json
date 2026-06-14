@@ -5,17 +5,20 @@
 	"license": "MIT",
 	"type": "module",
 	"scripts": {
-		"prepare": "wget -q https://opengrind.org/openapi.json -O src/lib/schema/openapi.json",
-		"build": "bun prepare && vite build",
+		"build": "vite build",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
 		"dev": "bun run dev:desktop",
-		"dev:desktop": "bun prepare && bun --bun tauri dev",
+		"dev:desktop": "bun --bun tauri dev",
 		"dev:web": "bun --bun vite dev",
 		"format": "prettier --write .",
 		"lint": "prettier --check . && eslint .",
 		"preview": "vite preview",
-		"tauri": "tauri"
+		"tauri": "tauri",
+		"bundle": "bun run bundle:macos && bun run bundle:linux && bun run bundle:windows",
+		"bundle:macos": "rustup target add x86_64-apple-darwin aarch64-apple-darwin && tauri build --target universal-apple-darwin && rm -rf dist/macos && mkdir -p dist/macos && cp -R src-tauri/target/universal-apple-darwin/release/bundle/macos src-tauri/target/universal-apple-darwin/release/bundle/dmg dist/macos",
+		"bundle:linux": "docker build --platform linux/amd64 -t grindr-devtool-bundle-linux -f docker/bundle-linux.Dockerfile docker && docker run --rm --platform linux/amd64 -v \"$PWD\":/app -v grindr-devtool-bundle-linux-node:/app/node_modules -v grindr-devtool-bundle-linux-build:/build -v grindr-devtool-bundle-cargo:/usr/local/cargo/registry grindr-devtool-bundle-linux",
+		"bundle:windows": "docker build -t grindr-devtool-bundle-windows -f docker/bundle-windows.Dockerfile docker && docker run --rm -v \"$PWD\":/app -v grindr-devtool-bundle-windows-node:/app/node_modules -v grindr-devtool-bundle-windows-build:/build -v grindr-devtool-bundle-cargo:/usr/local/cargo/registry grindr-devtool-bundle-windows"
 	},
 	"dependencies": {
 		"@tauri-apps/api": "^2",

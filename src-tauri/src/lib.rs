@@ -10,8 +10,8 @@ use tauri::Manager;
 use tokio::sync::Mutex;
 
 use crate::commands::{
-    add_account, cancel_request, delete_account, generate_device, get_active, list_accounts,
-    send_request, set_active,
+    add_account, cancel_request, delete_account, fetch_openapi, generate_device, get_active,
+    list_accounts, send_request, set_active,
 };
 use crate::session::activate_stored;
 use crate::state::AppState;
@@ -61,6 +61,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             generate_device,
+            fetch_openapi,
             list_accounts,
             get_active,
             add_account,
