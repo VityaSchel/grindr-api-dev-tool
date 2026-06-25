@@ -8,13 +8,25 @@
 	import UserCircleIcon from "phosphor-svelte/lib/UserCircleIcon";
 	import CaretUpDownIcon from "phosphor-svelte/lib/CaretUpDownIcon";
 	import CheckIcon from "phosphor-svelte/lib/CheckIcon";
+	import CopyIcon from "phosphor-svelte/lib/CopyIcon";
 	import XIcon from "phosphor-svelte/lib/XIcon";
 	import PlusIcon from "phosphor-svelte/lib/PlusIcon";
 
 	let addOpen = $state(false);
 	let busy = $state(false);
+	let copied = $state(false);
+	let copyTimer: ReturnType<typeof setTimeout> | undefined;
 
 	const label = $derived(accounts.active?.email ?? "Unauthorized");
+
+	function copyProfileId() {
+		const id = accounts.active?.profile_id;
+		if (!id) return;
+		void navigator.clipboard.writeText(id);
+		copied = true;
+		clearTimeout(copyTimer);
+		copyTimer = setTimeout(() => (copied = false), 1500);
+	}
 
 	async function switchTo(id: string | null) {
 		if (busy) return;
@@ -60,78 +72,101 @@
 		</Button>
 	</div>
 
-	<DropdownMenu.Root>
-		<DropdownMenu.Trigger>
-			{#snippet child({ props })}
-				<Button
-					variant="outline"
-					size="sm"
-					class="gap-2"
-					disabled={busy}
-					{...props}
-				>
-					<UserCircleIcon class="size-4" />
-					<span
-						class="max-w-44 truncate"
-						class:text-muted-foreground={!accounts.active}
-					>
-						{label}
-					</span>
-					<CaretUpDownIcon class="size-3.5 text-muted-foreground" />
-				</Button>
-			{/snippet}
-		</DropdownMenu.Trigger>
-		<DropdownMenu.Content align="end" class="w-64">
-			<DropdownMenu.Label>Accounts</DropdownMenu.Label>
-			<DropdownMenu.Separator />
-
-			<DropdownMenu.Item class="gap-2" onSelect={() => switchTo(null)}>
-				{#if accounts.activeId === null}
-					<CheckIcon class="size-4 shrink-0" />
+	<div class="flex items-center gap-2">
+		{#if accounts.active}
+			<Button
+				variant="outline"
+				size="sm"
+				class="gap-1.5"
+				onclick={copyProfileId}
+				title="Copy profile ID ({accounts.active.profile_id})"
+			>
+				{#if copied}
+					<CheckIcon class="size-3.5 text-green-600 dark:text-green-400" />
 				{:else}
-					<span class="size-4 shrink-0"></span>
+					<CopyIcon class="size-3.5" />
 				{/if}
-				<span class="flex-1">Unauthorized</span>
-			</DropdownMenu.Item>
+				ID
+			</Button>
+		{/if}
 
-			{#each accounts.accounts as account (account.id)}
-				<DropdownMenu.Item class="gap-2" onSelect={() => switchTo(account.id)}>
-					{#if accounts.activeId === account.id}
+		<DropdownMenu.Root>
+			<DropdownMenu.Trigger>
+				{#snippet child({ props })}
+					<Button
+						variant="outline"
+						size="sm"
+						class="gap-2"
+						disabled={busy}
+						{...props}
+					>
+						<UserCircleIcon class="size-4" />
+						<span
+							class="max-w-44 truncate"
+							class:text-muted-foreground={!accounts.active}
+						>
+							{label}
+						</span>
+						<CaretUpDownIcon class="size-3.5 text-muted-foreground" />
+					</Button>
+				{/snippet}
+			</DropdownMenu.Trigger>
+			<DropdownMenu.Content align="end" class="w-64">
+				<DropdownMenu.Label>Accounts</DropdownMenu.Label>
+				<DropdownMenu.Separator />
+
+				<DropdownMenu.Item class="gap-2" onSelect={() => switchTo(null)}>
+					{#if accounts.activeId === null}
 						<CheckIcon class="size-4 shrink-0" />
 					{:else}
 						<span class="size-4 shrink-0"></span>
 					{/if}
-					<span class="min-w-0 flex-1 truncate" title={account.email}>
-						{account.email}
-					</span>
-					<button
-						type="button"
-						class="-mr-1 rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-						aria-label="Delete account"
-						onpointerdown={(e) => e.stopPropagation()}
-						onclick={(e) => {
-							e.stopPropagation();
-							e.preventDefault();
-							void remove(account.id);
-						}}
-					>
-						<XIcon class="size-3.5" />
-					</button>
+					<span class="flex-1">Unauthorized</span>
 				</DropdownMenu.Item>
-			{/each}
 
-			<DropdownMenu.Separator />
-			<DropdownMenu.Item
-				class="gap-2"
-				onSelect={() => {
-					setTimeout(() => (addOpen = true), 0);
-				}}
-			>
-				<PlusIcon class="size-4 shrink-0" />
-				<span class="flex-1">Add account</span>
-			</DropdownMenu.Item>
-		</DropdownMenu.Content>
-	</DropdownMenu.Root>
+				{#each accounts.accounts as account (account.id)}
+					<DropdownMenu.Item
+						class="gap-2"
+						onSelect={() => switchTo(account.id)}
+					>
+						{#if accounts.activeId === account.id}
+							<CheckIcon class="size-4 shrink-0" />
+						{:else}
+							<span class="size-4 shrink-0"></span>
+						{/if}
+						<span class="min-w-0 flex-1 truncate" title={account.email}>
+							{account.email}
+						</span>
+						<button
+							type="button"
+							class="-mr-1 rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+							aria-label="Delete account"
+							onpointerdown={(e) => e.stopPropagation()}
+							onpointerup={(e) => e.stopPropagation()}
+							onclick={(e) => {
+								e.stopPropagation();
+								e.preventDefault();
+								void remove(account.id);
+							}}
+						>
+							<XIcon class="size-3.5" />
+						</button>
+					</DropdownMenu.Item>
+				{/each}
+
+				<DropdownMenu.Separator />
+				<DropdownMenu.Item
+					class="gap-2"
+					onSelect={() => {
+						setTimeout(() => (addOpen = true), 0);
+					}}
+				>
+					<PlusIcon class="size-4 shrink-0" />
+					<span class="flex-1">Add account</span>
+				</DropdownMenu.Item>
+			</DropdownMenu.Content>
+		</DropdownMenu.Root>
+	</div>
 </header>
 
 <AddAccountDialog bind:open={addOpen} />

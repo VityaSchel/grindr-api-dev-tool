@@ -251,65 +251,67 @@
 	}
 </script>
 
-<div class="flex flex-col gap-4">
-	<div class="flex items-center gap-2">
-		{#if operations.length > 1}
-			<Select.Root
-				type="single"
-				value={op.method}
-				onValueChange={(v) => (selectedMethod = v)}
-			>
-				<Select.Trigger
-					class="w-24 shrink-0 font-mono font-bold"
-					style="color: {opColor}"
+<Tabs.Root bind:value={tab} class="gap-0">
+	<div
+		class="sticky top-0 z-10 flex flex-col gap-4 border-b bg-background px-6 pt-4 pb-3"
+	>
+		<div class="flex items-center gap-2">
+			{#if operations.length > 1}
+				<Select.Root
+					type="single"
+					value={op.method}
+					onValueChange={(v) => (selectedMethod = v)}
 				>
-					{op.method.toUpperCase()}
-				</Select.Trigger>
-				<Select.Content>
-					{#each operations as o (o.method)}
-						<Select.Item
-							value={o.method}
-							style="color: {METHOD_COLORS[o.method]}"
-							class="font-mono font-bold"
-						>
-							{o.method.toUpperCase()}
-						</Select.Item>
-					{/each}
-				</Select.Content>
-			</Select.Root>
-		{:else}
-			<span
-				class="shrink-0 rounded-lg border px-3 py-1.5 font-mono text-sm font-bold"
-				style="color: {opColor}">{op.method.toUpperCase()}</span
-			>
-		{/if}
+					<Select.Trigger
+						class="w-24 shrink-0 font-mono font-bold"
+						style="color: {opColor}"
+					>
+						{op.method.toUpperCase()}
+					</Select.Trigger>
+					<Select.Content>
+						{#each operations as o (o.method)}
+							<Select.Item
+								value={o.method}
+								style="color: {METHOD_COLORS[o.method]}"
+								class="font-mono font-bold"
+							>
+								{o.method.toUpperCase()}
+							</Select.Item>
+						{/each}
+					</Select.Content>
+				</Select.Root>
+			{:else}
+				<span
+					class="shrink-0 rounded-lg border px-3 py-1.5 font-mono text-sm font-bold"
+					style="color: {opColor}">{op.method.toUpperCase()}</span
+				>
+			{/if}
 
-		<div
-			class="flex-1 truncate rounded-lg border bg-muted/40 px-3 py-1.5 font-mono text-sm text-foreground"
-			title={BASE_URL + previewPath}
-		>
-			<span class="text-muted-foreground">{BASE_URL}</span>{previewPath}
+			<div
+				class="flex-1 truncate rounded-lg border bg-muted/40 px-3 py-1.5 font-mono text-sm text-foreground"
+				title={BASE_URL + previewPath}
+			>
+				<span class="text-muted-foreground">{BASE_URL}</span>{previewPath}
+			</div>
+
+			{#if sending}
+				<Button variant="destructive" onclick={cancel} class="shrink-0">
+					<XIcon /> Cancel
+				</Button>
+			{:else}
+				<Button onclick={send} disabled={blocked} class="shrink-0">
+					{#if blocked}<LockIcon />{:else}<PaperPlaneTiltIcon />{/if}
+					Send
+				</Button>
+			{/if}
 		</div>
 
-		{#if sending}
-			<Button variant="destructive" onclick={cancel} class="shrink-0">
-				<XIcon /> Cancel
-			</Button>
-		{:else}
-			<Button onclick={send} disabled={blocked} class="shrink-0">
-				{#if blocked}<LockIcon />{:else}<PaperPlaneTiltIcon />{/if}
-				Send
-			</Button>
+		{#if blocked}
+			<p class="-mt-2 text-xs text-muted-foreground">
+				This endpoint requires authorization. Select an account to send it.
+			</p>
 		{/if}
-	</div>
 
-	{#if blocked}
-		<p class="-mt-2 text-xs text-muted-foreground">
-			This endpoint requires authorization. Select an account to send it.
-		</p>
-	{/if}
-
-	<Tabs.Root bind:value={tab}>
 		<Tabs.List>
 			<Tabs.Trigger value="params">
 				Params
@@ -324,8 +326,10 @@
 			{/if}
 			<Tabs.Trigger value="response">Response</Tabs.Trigger>
 		</Tabs.List>
+	</div>
 
-		<Tabs.Content value="params" class="flex flex-col gap-5 pt-2">
+	<div class="px-6 pt-4 pb-2">
+		<Tabs.Content value="params" class="flex flex-col gap-5">
 			{#if pathParams.length}
 				<section class="flex flex-col gap-3">
 					<h3 class="text-xs font-semibold tracking-wide uppercase">
@@ -368,7 +372,7 @@
 		</Tabs.Content>
 
 		{#if op.requestBody}
-			<Tabs.Content value="body" class="flex flex-col gap-3 pt-2">
+			<Tabs.Content value="body" class="flex flex-col gap-3">
 				<div class="flex items-center justify-between">
 					<span class="font-mono text-xs text-muted-foreground"
 						>{contentType}</span
@@ -423,7 +427,7 @@
 			</Tabs.Content>
 		{/if}
 
-		<Tabs.Content value="response" class="flex flex-col gap-2 pt-2">
+		<Tabs.Content value="response" class="flex flex-col gap-2">
 			{#if sendError}
 				<div
 					class="rounded-lg border border-destructive/30 bg-destructive/10 p-3"
@@ -460,5 +464,5 @@
 				</p>
 			{/if}
 		</Tabs.Content>
-	</Tabs.Root>
-</div>
+	</div>
+</Tabs.Root>
