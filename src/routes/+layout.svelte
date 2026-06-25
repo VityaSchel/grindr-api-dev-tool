@@ -2,7 +2,9 @@
 	import "./layout.css";
 	import { onMount, untrack } from "svelte";
 	import { page } from "$app/state";
-	import { goto } from "$app/navigation";
+	import { goto, afterNavigate } from "$app/navigation";
+	import { resolve } from "$app/paths";
+	import { listen } from "@tauri-apps/api/event";
 	import * as Resizable from "$lib/components/ui/resizable";
 	import AppSidebar from "$lib/components/AppSidebar.svelte";
 	import Navbar from "$lib/components/Navbar.svelte";
@@ -18,6 +20,9 @@
 
 	const activePath = $derived(page.params.path ?? null);
 	const activeMethod = $derived(page.url.searchParams.get(METHOD_PARAM));
+
+	const isMac =
+		typeof navigator !== "undefined" && navigator.userAgent.includes("Mac");
 
 	$effect(() => {
 		const path = activePath;
@@ -37,6 +42,41 @@
 		});
 	});
 
+	function closeActiveTab() {
+		if (activePath === null) return;
+		const neighbour = tabs.close(activePath, activeMethod);
+		void goto(
+			neighbour
+				? grindrApiHref(neighbour.path, { method: neighbour.method })
+				: resolve("/"),
+		);
+	}
+
+	function onKeydown(e: KeyboardEvent) {
+		if ((e.metaKey || e.ctrlKey) && (e.key === "w" || e.key === "W")) {
+			e.preventDefault();
+			closeActiveTab();
+		}
+	}
+
+	function scrollToHash(attempt = 0) {
+		const hash = page.url.hash.slice(1);
+		if (!hash) return;
+		const container = document.querySelector<HTMLElement>(
+			'[data-scroll-container][data-active="true"]',
+		);
+		const target = container?.querySelector<HTMLElement>(
+			`[id="${CSS.escape(hash)}"]`,
+		);
+		if (target) {
+			target.scrollIntoView({ behavior: "smooth", block: "start" });
+		} else if (attempt < 10) {
+			requestAnimationFrame(() => scrollToHash(attempt + 1));
+		}
+	}
+
+	afterNavigate(() => scrollToHash());
+
 	const LINK_PREFIX = "/grindr-api/";
 
 	function backgroundOpen(e: MouseEvent) {
@@ -55,16 +95,24 @@
 	onMount(() => {
 		void accounts.load();
 
+		let unlistenCloseTab: (() => void) | undefined;
+		listen("close-tab", () => closeActiveTab())
+			.then((u) => (unlistenCloseTab = u))
+			.catch(() => {});
+
 		document.addEventListener("click", backgroundOpen, true);
 		document.addEventListener("auxclick", backgroundOpen, true);
+		if (!isMac) window.addEventListener("keydown", onKeydown);
 		return () => {
 			document.removeEventListener("click", backgroundOpen, true);
 			document.removeEventListener("auxclick", backgroundOpen, true);
+			if (!isMac) window.removeEventListener("keydown", onKeydown);
+			unlistenCloseTab?.();
 		};
 	});
 </script>
 
-<Resizable.PaneGroup direction="horizontal" class="max-h-dvh">
+<Resizable.PaneGroup direction="horizontal" class="h-dvh!">
 	<Resizable.Pane defaultSize={20} maxSize={60} class="flex min-w-60 flex-col">
 		<AppSidebar />
 	</Resizable.Pane>
@@ -76,12 +124,12 @@
 		<TabBar />
 		<div class="flex min-h-0 flex-1 flex-col">
 			{#each tabs.tabs as tab (tabKey(tab.path, tab.method))}
+				{@const isActive =
+					tab.path === activePath && tab.method === activeMethod}
 				<div
-					class={[
-						"min-h-0 flex-1 overflow-auto",
-						!(tab.path === activePath && tab.method === activeMethod) &&
-							"hidden",
-					]}
+					data-scroll-container
+					data-active={isActive}
+					class={["min-h-0 flex-1 overflow-auto", !isActive && "hidden"]}
 				>
 					{#if tab.path === CUSTOM_TAB_PATH}
 						<CustomRequest />

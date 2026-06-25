@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { onMount } from "svelte";
 	import { accounts } from "$lib/accounts.svelte";
 	import { api } from "$lib/api";
 	import { SELECTABLE_METHODS, methodColor } from "$lib/methods";
@@ -13,6 +14,7 @@
 
 	const BASE_URL = "https://grindr.mobi";
 
+	let rootEl = $state<HTMLElement | null>(null);
 	let method = $state("GET");
 	let url = $state("");
 	let bodyText = $state("");
@@ -123,9 +125,21 @@
 			void send();
 		}
 	}
+
+	onMount(() => {
+		function onKeydown(e: KeyboardEvent) {
+			if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+				if (!rootEl || rootEl.offsetParent === null) return;
+				e.preventDefault();
+				void send();
+			}
+		}
+		window.addEventListener("keydown", onKeydown);
+		return () => window.removeEventListener("keydown", onKeydown);
+	});
 </script>
 
-<div class="mx-auto flex max-w-4xl flex-col gap-4 p-6">
+<div bind:this={rootEl} class="mx-auto flex max-w-4xl flex-col gap-4 p-6">
 	<div>
 		<h1 class="text-xl font-bold">Custom request</h1>
 		<p class="mt-1 text-sm text-muted-foreground">

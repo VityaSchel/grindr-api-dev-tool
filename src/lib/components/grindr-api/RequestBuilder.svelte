@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { onMount } from "svelte";
 	import type { Operation, Param, SchemaObject } from "$lib/openapi";
 	import { getParamGroupsForTag, resolveGroupParams } from "$lib/openapi";
 	import { accounts } from "$lib/accounts.svelte";
@@ -192,7 +193,7 @@
 	const requiresAuth = $derived(!!op.security?.length);
 	const blocked = $derived(requiresAuth && accounts.activeId === null);
 
-	// ── Sending ──
+	let rootEl = $state<HTMLElement | null>(null);
 	let sending = $state(false);
 	let cancelled = $state(false);
 	let currentRequestId = "";
@@ -224,6 +225,9 @@
 		response = null;
 		elapsed = null;
 		tab = "response";
+		rootEl
+			?.closest("[data-scroll-container]")
+			?.scrollTo({ top: 0, behavior: "smooth" });
 		const id = crypto.randomUUID();
 		currentRequestId = id;
 		const start = performance.now();
@@ -249,9 +253,21 @@
 		cancelled = true;
 		void api.cancelRequest(currentRequestId);
 	}
+
+	onMount(() => {
+		function onKeydown(e: KeyboardEvent) {
+			if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+				if (!rootEl || rootEl.offsetParent === null) return;
+				e.preventDefault();
+				void send();
+			}
+		}
+		window.addEventListener("keydown", onKeydown);
+		return () => window.removeEventListener("keydown", onKeydown);
+	});
 </script>
 
-<Tabs.Root bind:value={tab} class="gap-0">
+<Tabs.Root bind:ref={rootEl} bind:value={tab} class="gap-0">
 	<div
 		class="sticky top-0 z-10 flex flex-col gap-4 border-b bg-background px-6 pt-4 pb-3"
 	>

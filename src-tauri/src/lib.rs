@@ -57,6 +57,58 @@ pub fn run() {
                     }
                 });
             }
+
+            #[cfg(target_os = "macos")]
+            {
+                use tauri::menu::{AboutMetadata, MenuBuilder, MenuItemBuilder, SubmenuBuilder};
+                use tauri::Emitter;
+
+                let close_tab = MenuItemBuilder::with_id("close_tab", "Close Tab")
+                    .accelerator("CmdOrCtrl+W")
+                    .build(app)?;
+
+                let app_menu = SubmenuBuilder::new(app, "Grindr API developer tool")
+                    .about(Some(AboutMetadata::default()))
+                    .separator()
+                    .services()
+                    .separator()
+                    .hide()
+                    .hide_others()
+                    .show_all()
+                    .separator()
+                    .quit()
+                    .build()?;
+
+                let edit_menu = SubmenuBuilder::new(app, "Edit")
+                    .undo()
+                    .redo()
+                    .separator()
+                    .cut()
+                    .copy()
+                    .paste()
+                    .select_all()
+                    .build()?;
+
+                let window_menu = SubmenuBuilder::new(app, "Window")
+                    .item(&close_tab)
+                    .separator()
+                    .minimize()
+                    .build()?;
+
+                let menu = MenuBuilder::new(app)
+                    .item(&app_menu)
+                    .item(&edit_menu)
+                    .item(&window_menu)
+                    .build()?;
+
+                app.set_menu(menu)?;
+                app.on_menu_event(move |app, event| {
+                    if event.id() == close_tab.id() {
+                        let _ = app.emit("close-tab", ());
+                    }
+                });
+            }
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
