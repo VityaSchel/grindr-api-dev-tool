@@ -53,6 +53,13 @@
 		e.preventDefault();
 		if (submitting) return;
 		error = null;
+		const normalizedEmail = email.trim().toLowerCase();
+		if (
+			accounts.accounts.some((a) => a.email.toLowerCase() === normalizedEmail)
+		) {
+			error = "This account is already added.";
+			return;
+		}
 		submitting = true;
 		try {
 			await accounts.add(email.trim(), authToken.trim(), device);
