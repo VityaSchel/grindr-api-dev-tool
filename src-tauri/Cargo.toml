@@ -1,6 +1,6 @@
 [package]
 name = "grindr-api-dev-tool"
-version = "1.0.0"
+version = "1.1.0"
 description = "Grindr API developer tool"
 authors = ["Open Grind Governance (https://opengrind.org/governance)"]
 homepage = "https://opengrind.org"
