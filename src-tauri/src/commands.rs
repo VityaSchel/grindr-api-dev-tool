@@ -1,7 +1,7 @@
-use std::time::Duration;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use grindr::{DeviceInfo, GrindrClient, GrindrHeaders, Method};
-use serde::Serialize;
+use grindr::{build_user_agent, DeviceInfo, GrindrClient, GrindrHeaders, Method};
+use serde::{Deserialize, Serialize};
 use tauri::AppHandle;
 use tokio::sync::oneshot;
 
@@ -15,15 +15,53 @@ const OPENAPI_URL: &str = "https://opengrind.org/openapi.json";
 
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(15);
 
+const UPLOAD_TIMEOUT: Duration = Duration::from_secs(120);
+
 #[derive(Serialize)]
 pub(crate) struct ResponsePayload {
     status: u16,
     body: String,
 }
 
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct BodyFile {
+    path: String,
+    content_type: String,
+}
+
+#[derive(Serialize)]
+pub(crate) struct FileMeta {
+    name: String,
+    size: u64,
+}
+
+fn now_unix() -> u64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0)
+}
+
 #[tauri::command]
 pub(crate) fn generate_device() -> DeviceInfo {
     DeviceInfo::generate()
+}
+
+#[tauri::command]
+pub(crate) async fn stat_file(path: String) -> Result<FileMeta, String> {
+    let meta = tokio::fs::metadata(&path)
+        .await
+        .map_err(|e| format!("could not read {path}: {e}"))?;
+    let name = std::path::Path::new(&path)
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("")
+        .to_owned();
+    Ok(FileMeta {
+        name,
+        size: meta.len(),
+    })
 }
 
 #[tauri::command]
@@ -167,9 +205,16 @@ pub(crate) async fn send_request(
     path: String,
     body: Option<serde_json::Value>,
     request_id: String,
+    body_file: Option<BodyFile>,
 ) -> Result<ResponsePayload, String> {
     let method =
         Method::from_bytes(method.as_bytes()).map_err(|e| format!("invalid method: {e}"))?;
+
+    let timeout = if body_file.is_some() {
+        UPLOAD_TIMEOUT
+    } else {
+        REQUEST_TIMEOUT
+    };
 
     // Register a cancellation handle so `cancel_request` can abort this from the UI.
     let (cancel_tx, cancel_rx) = oneshot::channel::<()>();
@@ -180,10 +225,10 @@ pub(crate) async fn send_request(
         .insert(request_id.clone(), cancel_tx);
 
     let result = tokio::select! {
-        res = perform_request(&state, method, &path, body) => res,
+        res = perform_request(&state, method, &path, body, body_file) => res,
         // Sender dropped by `cancel_request` (or below on completion) resolves this.
         _ = cancel_rx => Err("request cancelled".to_string()),
-        _ = tokio::time::sleep(REQUEST_TIMEOUT) => Err("request timed out".to_string()),
+        _ = tokio::time::sleep(timeout) => Err("request timed out".to_string()),
     };
 
     state.inflight.lock().await.remove(&request_id);
@@ -207,9 +252,24 @@ async fn perform_request(
     method: Method,
     path: &str,
     body: Option<serde_json::Value>,
+    body_file: Option<BodyFile>,
 ) -> Result<ResponsePayload, String> {
+    let file_body = match body_file {
+        Some(bf) => {
+            let bytes = tokio::fs::read(&bf.path)
+                .await
+                .map_err(|e| format!("could not read {}: {e}", bf.path))?;
+            Some((bytes, bf.content_type))
+        }
+        None => None,
+    };
+
     let client = state.active_client.lock().await.clone();
     if let Some(client) = client {
+        if let Some((bytes, content_type)) = file_body {
+            return perform_authenticated_binary(state, &client, method, path, bytes, content_type)
+                .await;
+        }
         let resp = client
             .request_authenticated_raw(method, path, body)
             .await
@@ -231,7 +291,9 @@ async fn perform_request(
     for (name, value) in headers.items {
         req = req.header(name, value);
     }
-    if let Some(b) = body {
+    if let Some((bytes, content_type)) = file_body {
+        req = req.header("content-type", content_type).body(bytes);
+    } else if let Some(b) = body {
         req = req.json(&b);
     }
     let resp = req.send().await.map_err(|e| e.to_string())?;
@@ -240,5 +302,65 @@ async fn perform_request(
     Ok(ResponsePayload {
         status,
         body: String::from_utf8_lossy(&bytes).into_owned(),
+    })
+}
+
+/// Send a raw binary body on the active account. The crate's `request_authenticated_raw`
+/// only sends JSON, so we rebuild the authenticated request ourselves: refresh the
+/// session if it's about to expire, then send with the account's device headers, the
+/// `Grindr3 <session_id>` authorization, and the caller's chosen `Content-Type`. The
+/// no-auth client shares the same TLS/HTTP2 emulation as the authenticated one.
+async fn perform_authenticated_binary(
+    state: &AppState,
+    client: &GrindrClient,
+    method: Method,
+    path: &str,
+    bytes: Vec<u8>,
+    content_type: String,
+) -> Result<ResponsePayload, String> {
+    if !path.starts_with('/') {
+        return Err("path must begin with '/'".to_string());
+    }
+
+    const REFRESH_BUFFER_SECS: u64 = 60;
+    let mut session = client
+        .session_receiver()
+        .borrow()
+        .clone()
+        .ok_or_else(|| "not logged in".to_string())?;
+    if session.expires_at < now_unix() + REFRESH_BUFFER_SECS {
+        match client.refresh_token().await {
+            Ok(_) => {
+                session = client
+                    .session_receiver()
+                    .borrow()
+                    .clone()
+                    .ok_or_else(|| "not logged in".to_string())?;
+            }
+            Err(e) if session.expires_at <= now_unix() => return Err(e.to_string()),
+            Err(_) => {}
+        }
+    }
+
+    let authorization = format!("Grindr3 {}", session.session_id);
+    let device = client.current_device().await;
+    let user_agent = build_user_agent(&device, "Free");
+    let headers = GrindrHeaders::build(&device, &user_agent, Some(&authorization), Some("[FREE]"))
+        .map_err(|e| e.to_string())?;
+
+    let mut req = state
+        .noauth_client
+        .request(method, format!("{BASE_URL}{path}"));
+    for (name, value) in headers.items {
+        req = req.header(name, value);
+    }
+    req = req.header("content-type", content_type).body(bytes);
+
+    let resp = req.send().await.map_err(|e| e.to_string())?;
+    let status = resp.status().as_u16();
+    let resp_bytes = resp.bytes().await.map_err(|e| e.to_string())?;
+    Ok(ResponsePayload {
+        status,
+        body: String::from_utf8_lossy(&resp_bytes).into_owned(),
     })
 }

@@ -34,6 +34,10 @@ export type AccountInfo = { id: string; email: string; profile_id: string };
 
 export type ResponsePayload = { status: number; body: string };
 
+export type FileMeta = { name: string; size: number };
+
+export type BodyFile = { path: string; contentType: string };
+
 // Tauri v2 commands default to `ArgumentCase::Camel` (Rust `auth_token` = js `authToken`)
 export const api = {
 	generateDevice: () => invoke<DeviceInfo>("generate_device"),
@@ -50,8 +54,16 @@ export const api = {
 		path: string,
 		body: unknown | null,
 		requestId: string,
+		bodyFile: BodyFile | null = null,
 	) =>
-		invoke<ResponsePayload>("send_request", { method, path, body, requestId }),
+		invoke<ResponsePayload>("send_request", {
+			method,
+			path,
+			body,
+			requestId,
+			bodyFile,
+		}),
 	cancelRequest: (requestId: string) =>
 		invoke<void>("cancel_request", { requestId }),
+	statFile: (path: string) => invoke<FileMeta>("stat_file", { path }),
 };

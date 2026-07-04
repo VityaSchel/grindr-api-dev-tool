@@ -204,7 +204,9 @@ export function getTag(name: string): Tag | undefined {
 // ─── Schema lookups ───────────────────────────────────────────────────────────
 
 export function getSchema(name: string): SchemaObject | undefined {
-	return (schema.components.schemas as unknown as Record<string, SchemaObject>)[name];
+	return (schema.components.schemas as unknown as Record<string, SchemaObject>)[
+		name
+	];
 }
 
 /** Return the tag page this schema is rendered on (from x-render-on-tag). */
@@ -250,6 +252,27 @@ export function resolveGroupParams(group: ParameterGroup): Param[] {
 		if ("$ref" in p) return resolveRef(p.$ref) as Param;
 		return p;
 	});
+}
+
+// ─── Binary bodies ─────────────────────────────────────────────────────────────
+
+/** True when a schema represents raw binary content (a file to upload). */
+export function isBinarySchema(s: SchemaObject | undefined): boolean {
+	if (!s) return false;
+	if (s.$ref) return isBinarySchema(resolveRef(s.$ref) as SchemaObject);
+	if (s.type === "string" && s.format === "binary") return true;
+	return (s.allOf ?? []).some(isBinarySchema);
+}
+
+/** The declared content type whose body is a single raw binary blob, if any. */
+export function binaryBodyContentType(
+	body: RequestBody | undefined,
+): string | undefined {
+	if (!body) return undefined;
+	for (const [contentType, media] of Object.entries(body.content)) {
+		if (isBinarySchema(media.schema)) return contentType;
+	}
+	return undefined;
 }
 
 // ─── Type labels ─────────────────────────────────────────────────────────────

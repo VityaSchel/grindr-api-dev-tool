@@ -11,7 +11,7 @@ use tokio::sync::Mutex;
 
 use crate::commands::{
     add_account, cancel_request, delete_account, fetch_openapi, generate_device, get_active,
-    list_accounts, send_request, set_active,
+    list_accounts, send_request, set_active, stat_file,
 };
 use crate::session::activate_stored;
 use crate::state::AppState;
@@ -21,6 +21,7 @@ use crate::store::load_store;
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
             let store_path = app
                 .path()
@@ -121,6 +122,7 @@ pub fn run() {
             delete_account,
             send_request,
             cancel_request,
+            stat_file,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

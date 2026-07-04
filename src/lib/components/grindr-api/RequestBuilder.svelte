@@ -1,9 +1,15 @@
 <script lang="ts">
 	import { onMount } from "svelte";
+	import { open } from "@tauri-apps/plugin-dialog";
 	import type { Operation, Param, SchemaObject } from "$lib/openapi";
-	import { getParamGroupsForTag, resolveGroupParams } from "$lib/openapi";
+	import {
+		getParamGroupsForTag,
+		resolveGroupParams,
+		binaryBodyContentType,
+	} from "$lib/openapi";
 	import { accounts } from "$lib/accounts.svelte";
 	import { api } from "$lib/api";
+	import { guessMimeType, formatFileSize } from "$lib/utils";
 	import { METHOD_COLORS, methodColor } from "$lib/methods";
 	import SchemaField from "./SchemaField.svelte";
 	import JsonView from "./JsonView.svelte";
@@ -11,9 +17,11 @@
 	import * as Tabs from "$lib/components/ui/tabs";
 	import { Switch } from "$lib/components/ui/switch";
 	import { Textarea } from "$lib/components/ui/textarea";
+	import { Input } from "$lib/components/ui/input";
 	import { Button } from "$lib/components/ui/button";
 	import { Separator } from "$lib/components/ui/separator";
 	import PaperPlaneTiltIcon from "phosphor-svelte/lib/PaperPlaneTiltIcon";
+	import FileArrowUpIcon from "phosphor-svelte/lib/FileArrowUpIcon";
 	import LockIcon from "phosphor-svelte/lib/LockIcon";
 	import XIcon from "phosphor-svelte/lib/XIcon";
 
@@ -59,6 +67,8 @@
 	const contentType = $derived(
 		op.requestBody ? Object.keys(op.requestBody.content)[0] : undefined,
 	);
+	// Declared content type of a raw binary (file) body, e.g. application/octet-stream.
+	const binaryContentType = $derived(binaryBodyContentType(op.requestBody));
 
 	// ── Models (reset when the operation changes) ──
 	let pathModel = $state<Record<string, unknown>>({});
@@ -67,6 +77,11 @@
 	let bodyView = $state<"form" | "json">("form");
 	let bodyText = $state("");
 	let bodyError = $state<string | null>(null);
+	let bodyFile = $state<{ path: string; name: string; size: number } | null>(
+		null,
+	);
+	let bodyContentType = $state("");
+	let fileError = $state<string | null>(null);
 	let tab = $state("params");
 
 	let opKey = "";
@@ -79,9 +94,28 @@
 			bodyModel = undefined;
 			bodyView = "form";
 			bodyError = null;
+			bodyFile = null;
+			bodyContentType = binaryContentType ?? "";
+			fileError = null;
 			tab = "params";
 		}
 	});
+
+	async function pickFile() {
+		try {
+			const selected = await open({ multiple: false, directory: false });
+			if (typeof selected !== "string") return;
+			const meta = await api.statFile(selected);
+			bodyFile = { path: selected, name: meta.name, size: meta.size };
+			bodyContentType =
+				guessMimeType(meta.name) ??
+				binaryContentType ??
+				"application/octet-stream";
+			fileError = null;
+		} catch (e) {
+			fileError = String(e);
+		}
+	}
 
 	// The form is the source of truth; mirror it into the editor while in form view.
 	const builtJson = $derived(
@@ -232,12 +266,23 @@
 		currentRequestId = id;
 		const start = performance.now();
 		try {
-			const body = bodyToSend();
+			let body: unknown | null = null;
+			let file: { path: string; contentType: string } | null = null;
+			if (binaryContentType) {
+				if (!bodyFile) throw new Error("Select a file to upload.");
+				file = {
+					path: bodyFile.path,
+					contentType: bodyContentType.trim() || binaryContentType,
+				};
+			} else {
+				body = bodyToSend();
+			}
 			response = await api.sendRequest(
 				op.method.toUpperCase(),
 				buildPath(),
 				body,
 				id,
+				file,
 			);
 		} catch (e) {
 			// A user-initiated cancel rejects too; show it as neutral, not an error.
@@ -413,7 +458,54 @@
 					{/if}
 				</div>
 
-				{#if jsonSchema && bodyView === "form"}
+				{#if binaryContentType}
+					<div class="flex flex-wrap items-center gap-2">
+						<Button variant="outline" size="sm" onclick={pickFile}>
+							<FileArrowUpIcon /> Select file…
+						</Button>
+						{#if bodyFile}
+							<div
+								class="flex min-w-0 items-center gap-2 rounded-lg border bg-muted/40 px-3 py-1.5 text-xs"
+							>
+								<span class="truncate font-mono">{bodyFile.name}</span>
+								<span class="shrink-0 text-muted-foreground"
+									>{formatFileSize(bodyFile.size)}</span
+								>
+								<button
+									type="button"
+									class="shrink-0 text-muted-foreground hover:text-foreground"
+									onclick={() => (bodyFile = null)}
+									aria-label="Remove file"
+								>
+									<XIcon class="size-3.5" />
+								</button>
+							</div>
+						{:else}
+							<span class="text-xs text-muted-foreground"
+								>No file selected.</span
+							>
+						{/if}
+					</div>
+					{#if fileError}
+						<span class="text-xs wrap-break-word text-destructive"
+							>{fileError}</span
+						>
+					{/if}
+					<label class="flex flex-col gap-1.5">
+						<span class="text-xs font-semibold tracking-wide uppercase"
+							>Content-Type</span
+						>
+						<Input
+							bind:value={bodyContentType}
+							spellcheck={false}
+							class="font-mono text-xs"
+							placeholder={binaryContentType}
+						/>
+					</label>
+					<span class="text-xs text-muted-foreground">
+						The file is sent as the raw request body with this Content-Type.
+					</span>
+				{:else if jsonSchema && bodyView === "form"}
 					<div class="rounded-lg border p-3">
 						<SchemaField
 							schema={jsonSchema}
