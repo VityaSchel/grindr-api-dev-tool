@@ -1,6 +1,6 @@
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::time::Duration;
 
-use grindr::{build_user_agent, DeviceInfo, GrindrClient, GrindrHeaders, Method};
+use grindr::{DeviceInfo, GrindrClient, GrindrHeaders, Method};
 use serde::{Deserialize, Serialize};
 use tauri::AppHandle;
 use tokio::sync::oneshot;
@@ -28,19 +28,14 @@ pub(crate) struct ResponsePayload {
 pub(crate) struct BodyFile {
     path: String,
     content_type: String,
+    #[serde(default)]
+    signed: bool,
 }
 
 #[derive(Serialize)]
 pub(crate) struct FileMeta {
     name: String,
     size: u64,
-}
-
-fn now_unix() -> u64 {
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map(|d| d.as_secs())
-        .unwrap_or(0)
 }
 
 #[tauri::command]
@@ -99,29 +94,68 @@ pub(crate) async fn get_active(
     Ok(state.store.lock().await.active.clone())
 }
 
+#[derive(Deserialize)]
+#[serde(tag = "method", rename_all = "camelCase")]
+pub(crate) enum SignInCredentials {
+    #[serde(rename_all = "camelCase")]
+    Token { email: String, auth_token: String },
+    #[serde(rename_all = "camelCase")]
+    Password { email: String, password: String },
+    #[serde(rename_all = "camelCase")]
+    Google { google_token: String },
+}
+
+async fn establish_session(
+    device: &DeviceInfo,
+    credentials: &SignInCredentials,
+    geohash: Option<&str>,
+) -> Result<GrindrClient, String> {
+    let initial = match credentials {
+        SignInCredentials::Token { email, auth_token } => Some(partial_session(email, auth_token)?),
+        _ => None,
+    };
+    let client = GrindrClient::new(device.clone(), initial).map_err(|e| e.to_string())?;
+
+    match credentials {
+        SignInCredentials::Token { .. } => {
+            client.refresh_token_with_geohash(geohash).await.map(drop)
+        }
+        SignInCredentials::Password { email, password } => client
+            .login_with_geohash(email, password, geohash)
+            .await
+            .map(drop),
+        SignInCredentials::Google { google_token } => client
+            .google_sign_in_with_geohash(google_token, geohash)
+            .await
+            .map(drop),
+    }
+    .map_err(|e| e.to_string())?;
+
+    Ok(client)
+}
+
 #[tauri::command]
 pub(crate) async fn add_account(
     app: AppHandle,
     state: tauri::State<'_, AppState>,
-    email: String,
-    auth_token: String,
+    credentials: SignInCredentials,
     device: Option<DeviceInfo>,
+    geohash: Option<String>,
 ) -> Result<AccountInfo, String> {
     let device = device.unwrap_or_else(DeviceInfo::generate);
-    let session = partial_session(&email, &auth_token)?;
-    let client = GrindrClient::new(device.clone(), Some(session)).map_err(|e| e.to_string())?;
+    let geohash = geohash.as_deref().map(str::trim).filter(|s| !s.is_empty());
+    let client = establish_session(&device, &credentials, geohash).await?;
 
-    client.refresh_token().await.map_err(|e| e.to_string())?;
     let session = client
         .session_receiver()
         .borrow()
         .clone()
-        .ok_or_else(|| "no session after refresh".to_string())?;
+        .ok_or_else(|| "no session after sign-in".to_string())?;
 
     let id = session.profile_id.clone();
     let account = StoredAccount {
         id: id.clone(),
-        email,
+        email: session.email.clone(),
         profile_id: session.profile_id.clone(),
         session,
         device,
@@ -259,21 +293,27 @@ async fn perform_request(
             let bytes = tokio::fs::read(&bf.path)
                 .await
                 .map_err(|e| format!("could not read {}: {e}", bf.path))?;
-            Some((bytes, bf.content_type))
+            Some((bytes, bf.content_type, bf.signed))
         }
         None => None,
     };
 
     let client = state.active_client.lock().await.clone();
     if let Some(client) = client {
-        if let Some((bytes, content_type)) = file_body {
-            return perform_authenticated_binary(state, &client, method, path, bytes, content_type)
-                .await;
+        let resp = match file_body {
+            Some((bytes, content_type, true)) => {
+                client
+                    .request_signed_bytes(method, path, &content_type, bytes)
+                    .await
+            }
+            Some((bytes, content_type, false)) => {
+                client
+                    .request_authenticated_bytes(method, path, &content_type, bytes)
+                    .await
+            }
+            None => client.request_authenticated_raw(method, path, body).await,
         }
-        let resp = client
-            .request_authenticated_raw(method, path, body)
-            .await
-            .map_err(|e| e.to_string())?;
+        .map_err(|e| e.to_string())?;
         return Ok(ResponsePayload {
             status: resp.status,
             body: String::from_utf8_lossy(&resp.body).into_owned(),
@@ -291,7 +331,7 @@ async fn perform_request(
     for (name, value) in headers.items {
         req = req.header(name, value);
     }
-    if let Some((bytes, content_type)) = file_body {
+    if let Some((bytes, content_type, _signed)) = file_body {
         req = req.header("content-type", content_type).body(bytes);
     } else if let Some(b) = body {
         req = req.json(&b);
@@ -302,65 +342,5 @@ async fn perform_request(
     Ok(ResponsePayload {
         status,
         body: String::from_utf8_lossy(&bytes).into_owned(),
-    })
-}
-
-/// Send a raw binary body on the active account. The crate's `request_authenticated_raw`
-/// only sends JSON, so we rebuild the authenticated request ourselves: refresh the
-/// session if it's about to expire, then send with the account's device headers, the
-/// `Grindr3 <session_id>` authorization, and the caller's chosen `Content-Type`. The
-/// no-auth client shares the same TLS/HTTP2 emulation as the authenticated one.
-async fn perform_authenticated_binary(
-    state: &AppState,
-    client: &GrindrClient,
-    method: Method,
-    path: &str,
-    bytes: Vec<u8>,
-    content_type: String,
-) -> Result<ResponsePayload, String> {
-    if !path.starts_with('/') {
-        return Err("path must begin with '/'".to_string());
-    }
-
-    const REFRESH_BUFFER_SECS: u64 = 60;
-    let mut session = client
-        .session_receiver()
-        .borrow()
-        .clone()
-        .ok_or_else(|| "not logged in".to_string())?;
-    if session.expires_at < now_unix() + REFRESH_BUFFER_SECS {
-        match client.refresh_token().await {
-            Ok(_) => {
-                session = client
-                    .session_receiver()
-                    .borrow()
-                    .clone()
-                    .ok_or_else(|| "not logged in".to_string())?;
-            }
-            Err(e) if session.expires_at <= now_unix() => return Err(e.to_string()),
-            Err(_) => {}
-        }
-    }
-
-    let authorization = format!("Grindr3 {}", session.session_id);
-    let device = client.current_device().await;
-    let user_agent = build_user_agent(&device, "Free");
-    let headers = GrindrHeaders::build(&device, &user_agent, Some(&authorization), Some("[FREE]"))
-        .map_err(|e| e.to_string())?;
-
-    let mut req = state
-        .noauth_client
-        .request(method, format!("{BASE_URL}{path}"));
-    for (name, value) in headers.items {
-        req = req.header(name, value);
-    }
-    req = req.header("content-type", content_type).body(bytes);
-
-    let resp = req.send().await.map_err(|e| e.to_string())?;
-    let status = resp.status().as_u16();
-    let resp_bytes = resp.bytes().await.map_err(|e| e.to_string())?;
-    Ok(ResponsePayload {
-        status,
-        body: String::from_utf8_lossy(&resp_bytes).into_owned(),
     })
 }

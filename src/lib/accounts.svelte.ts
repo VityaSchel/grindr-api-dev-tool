@@ -1,4 +1,9 @@
-import { api, type AccountInfo, type DeviceInfo } from "./api";
+import {
+	api,
+	type AccountInfo,
+	type DeviceInfo,
+	type SignInCredentials,
+} from "./api";
 
 /**
  * Reactive store of authenticated accounts and the currently active one.
@@ -45,11 +50,11 @@ class AccountsStore {
 	}
 
 	async add(
-		email: string,
-		authToken: string,
+		credentials: SignInCredentials,
 		device: DeviceInfo | null,
+		geohash: string | null,
 	): Promise<AccountInfo> {
-		const info = await api.addAccount(email, authToken, device);
+		const info = await api.addAccount(credentials, device, geohash);
 		const idx = this.accounts.findIndex((a) => a.id === info.id);
 		if (idx >= 0) this.accounts[idx] = info;
 		else this.accounts.push(info);

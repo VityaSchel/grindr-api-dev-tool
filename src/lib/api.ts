@@ -32,11 +32,17 @@ export const DEVICE_FIELD_LABELS: Record<keyof DeviceInfo, string> = {
 
 export type AccountInfo = { id: string; email: string; profile_id: string };
 
+/** Credentials for a sign-in method, matching Rust's tagged `SignInCredentials`. */
+export type SignInCredentials =
+	| { method: "token"; email: string; authToken: string }
+	| { method: "password"; email: string; password: string }
+	| { method: "google"; googleToken: string };
+
 export type ResponsePayload = { status: number; body: string };
 
 export type FileMeta = { name: string; size: number };
 
-export type BodyFile = { path: string; contentType: string };
+export type BodyFile = { path: string; contentType: string; signed: boolean };
 
 // Tauri v2 commands default to `ArgumentCase::Camel` (Rust `auth_token` = js `authToken`)
 export const api = {
@@ -44,8 +50,11 @@ export const api = {
 	fetchOpenapi: () => invoke<string>("fetch_openapi"),
 	listAccounts: () => invoke<AccountInfo[]>("list_accounts"),
 	getActive: () => invoke<string | null>("get_active"),
-	addAccount: (email: string, authToken: string, device: DeviceInfo | null) =>
-		invoke<AccountInfo>("add_account", { email, authToken, device }),
+	addAccount: (
+		credentials: SignInCredentials,
+		device: DeviceInfo | null,
+		geohash: string | null,
+	) => invoke<AccountInfo>("add_account", { credentials, device, geohash }),
 	setActive: (id: string | null) => invoke<void>("set_active", { id }),
 	deleteAccount: (id: string) =>
 		invoke<string | null>("delete_account", { id }),

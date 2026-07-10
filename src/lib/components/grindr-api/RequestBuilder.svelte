@@ -82,6 +82,7 @@
 	);
 	let bodyContentType = $state("");
 	let fileError = $state<string | null>(null);
+	let signed = $state(false);
 	let tab = $state("params");
 
 	let opKey = "";
@@ -97,6 +98,7 @@
 			bodyFile = null;
 			bodyContentType = binaryContentType ?? "";
 			fileError = null;
+			signed = /\/v5\/media\/upload|\/v6\/chat\/media\/upload/.test(path);
 			tab = "params";
 		}
 	});
@@ -267,12 +269,17 @@
 		const start = performance.now();
 		try {
 			let body: unknown | null = null;
-			let file: { path: string; contentType: string } | null = null;
+			let file: {
+				path: string;
+				contentType: string;
+				signed: boolean;
+			} | null = null;
 			if (binaryContentType) {
 				if (!bodyFile) throw new Error("Select a file to upload.");
 				file = {
 					path: bodyFile.path,
 					contentType: bodyContentType.trim() || binaryContentType,
+					signed,
 				};
 			} else {
 				body = bodyToSend();
@@ -504,6 +511,18 @@
 					</label>
 					<span class="text-xs text-muted-foreground">
 						The file is sent as the raw request body with this Content-Type.
+					</span>
+					<label class="flex items-center justify-between gap-2">
+						<span class="text-xs font-semibold tracking-wide uppercase">
+							Sign with device key</span
+						>
+						<Switch bind:checked={signed} />
+					</label>
+					<span class="text-xs text-muted-foreground">
+						Required for <code>/v5/media/upload</code> and
+						<code>/v6/chat/media/upload</code>: registers a P-256 key and adds
+						the
+						<code>X-Sig</code> signing headers.
 					</span>
 				{:else if jsonSchema && bodyView === "form"}
 					<div class="rounded-lg border p-3">
