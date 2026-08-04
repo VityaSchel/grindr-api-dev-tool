@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use grindr::{DeviceInfo, Session};
+use grindr::{DeviceInfo, DeviceSigningKey, Session};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -10,6 +10,8 @@ pub(crate) struct StoredAccount {
     pub(crate) profile_id: String,
     pub(crate) session: Session,
     pub(crate) device: DeviceInfo,
+    #[serde(default)]
+    pub(crate) signing_key: Option<DeviceSigningKey>,
 }
 
 #[derive(Serialize, Deserialize, Default)]
@@ -74,4 +76,36 @@ pub(crate) fn save_store(path: &Path, store: &Store) -> Result<(), String> {
         let _ = std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o600));
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Accounts written before signing keys were stored must keep loading.
+    #[test]
+    fn a_store_without_signing_keys_still_loads() {
+        let json = r#"{
+            "accounts": [{
+                "id": "1", "email": "a@b.c", "profile_id": "1",
+                "session": {
+                    "email": "a@b.c", "expires_at": 0, "profile_id": "1",
+                    "session_id": "sid", "auth_token": "tok", "kind": "Email",
+                    "third_party_user_id": null
+                },
+                "device": {
+                    "device_type": 2, "device_id": "aaaabbbbccccdddd", "os": "Android 14",
+                    "screen_resolution": "2400x1080", "total_ram": "8589934592",
+                    "advertising_id": "1111", "device_model": "Pixel 8",
+                    "manufacturer": "Google", "timezone": "Europe/Berlin",
+                    "locale": "en_US", "accept_language": "en-US"
+                }
+            }],
+            "active": "1"
+        }"#;
+
+        let store: Store = serde_json::from_str(json).expect("legacy store must parse");
+        assert_eq!(store.active.as_deref(), Some("1"));
+        assert!(store.accounts[0].signing_key.is_none());
+    }
 }
