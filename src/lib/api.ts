@@ -32,6 +32,22 @@ export const DEVICE_FIELD_LABELS: Record<keyof DeviceInfo, string> = {
 
 export type AccountInfo = { id: string; email: string; profile_id: string };
 
+export type SessionRestriction = string | Record<string, unknown>;
+
+/** Rust `Session` — the stored credentials of an account. */
+export type Session = {
+	email: string;
+	expires_at: number;
+	profile_id: string;
+	session_id: string;
+	auth_token: string;
+	kind: "Email" | "Google";
+	third_party_user_id: string | null;
+	restriction: SessionRestriction | null;
+};
+
+export type AccountDetails = { device: DeviceInfo; session: Session };
+
 /** Credentials for a sign-in method, matching Rust's tagged `SignInCredentials`. */
 export type SignInCredentials =
 	| { method: "token"; email: string; authToken: string }
@@ -55,6 +71,10 @@ export const api = {
 		device: DeviceInfo | null,
 		geohash: string | null,
 	) => invoke<AccountInfo>("add_account", { credentials, device, geohash }),
+	accountDetails: (id: string) =>
+		invoke<AccountDetails>("account_details", { id }),
+	updateAccountDevice: (id: string, device: DeviceInfo) =>
+		invoke<void>("update_account_device", { id, device }),
 	setActive: (id: string | null) => invoke<void>("set_active", { id }),
 	deleteAccount: (id: string) =>
 		invoke<string | null>("delete_account", { id }),
