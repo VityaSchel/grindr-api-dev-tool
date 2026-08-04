@@ -1,10 +1,8 @@
-use grindr::{DeviceInfo, GrindrClient};
+use grindr::{DeviceInfo, GrindrClient, Session};
 use serde::Deserialize;
 use tauri::AppHandle;
 
-use crate::session::{
-    activate_stored, activate_stored_with_device, partial_session, set_active_client,
-};
+use crate::session::{activate_stored, activate_stored_with_device, set_active_client};
 use crate::state::AppState;
 use crate::store::{AccountDetails, AccountInfo, StoredAccount};
 
@@ -92,7 +90,9 @@ async fn establish_session(
     geohash: Option<&str>,
 ) -> Result<GrindrClient, String> {
     let initial = match credentials {
-        SignInCredentials::Token { email, auth_token } => Some(partial_session(email, auth_token)?),
+        SignInCredentials::Token { email, auth_token } => {
+            Some(Session::from_auth_token(email, auth_token))
+        }
         _ => None,
     };
     let client = GrindrClient::new(device.clone(), initial).map_err(|e| e.to_string())?;
@@ -140,6 +140,7 @@ pub(crate) async fn add_account(
         profile_id: session.profile_id.clone(),
         session,
         device,
+        signing_key: None,
     };
     let info = AccountInfo::from(&account);
 
