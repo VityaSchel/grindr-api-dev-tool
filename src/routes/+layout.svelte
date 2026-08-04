@@ -63,7 +63,7 @@
 		const hash = page.url.hash.slice(1);
 		if (!hash) return;
 		const container = document.querySelector<HTMLElement>(
-			'[data-scroll-container][data-active="true"]',
+			'[data-tab-panel][data-active="true"] [data-scroll-container]',
 		);
 		const target = container?.querySelector<HTMLElement>(
 			`[id="${CSS.escape(hash)}"]`,
@@ -127,9 +127,9 @@
 				{@const isActive =
 					tab.path === activePath && tab.method === activeMethod}
 				<div
-					data-scroll-container
+					data-tab-panel
 					data-active={isActive}
-					class={["min-h-0 flex-1 overflow-auto", !isActive && "hidden"]}
+					class={["min-h-0 flex-1", !isActive && "hidden"]}
 				>
 					{#if tab.path === CUSTOM_TAB_PATH}
 						<CustomRequest />

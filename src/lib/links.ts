@@ -1,5 +1,8 @@
 import { base } from "$app/paths";
 
+/** Shown in the request bar only — the backend owns the origin requests go to. */
+export const API_BASE_URL = "https://grindr.mobi";
+
 /**
  * Percent-encode each path segment so characters that are structural in a URL —
  * notably `?` (query) and `#` (fragment), but also `{`/`}` in templated paths —

@@ -1,42 +1,35 @@
 <script lang="ts">
-	import { onMount } from "svelte";
-	import { open } from "@tauri-apps/plugin-dialog";
-	import type { Operation, Param, SchemaObject } from "$lib/openapi";
-	import {
-		getParamGroupsForTag,
-		resolveGroupParams,
-		binaryBodyContentType,
-	} from "$lib/openapi";
+	import { onMount, untrack, type Snippet } from "svelte";
+	import type { Operation, Param } from "$lib/openapi";
+	import { getParamGroupsForTag, resolveGroupParams } from "$lib/openapi";
 	import { accounts } from "$lib/accounts.svelte";
-	import { api } from "$lib/api";
-	import { guessMimeType, formatFileSize } from "$lib/utils";
-	import { METHOD_COLORS, methodColor } from "$lib/methods";
-	import SchemaField from "./SchemaField.svelte";
-	import JsonView from "./JsonView.svelte";
-	import * as Select from "$lib/components/ui/select";
+	import { api, type BodyFile } from "$lib/api";
+	import { methodColor } from "$lib/methods";
+	import { API_BASE_URL, grindrApiHref } from "$lib/links";
+	import { buildRequestPath, parseRequestPath } from "$lib/request-path";
+	import { RequestBodyModel } from "$lib/request-body.svelte";
+	import type { RequestRunner } from "$lib/request.svelte";
+	import ParamsForm from "./ParamsForm.svelte";
+	import BodyEditor from "./BodyEditor.svelte";
 	import * as Tabs from "$lib/components/ui/tabs";
-	import { Switch } from "$lib/components/ui/switch";
-	import { Textarea } from "$lib/components/ui/textarea";
-	import { Input } from "$lib/components/ui/input";
 	import { Button } from "$lib/components/ui/button";
-	import { Separator } from "$lib/components/ui/separator";
+	import { Input } from "$lib/components/ui/input";
 	import PaperPlaneTiltIcon from "phosphor-svelte/lib/PaperPlaneTiltIcon";
-	import FileArrowUpIcon from "phosphor-svelte/lib/FileArrowUpIcon";
 	import LockIcon from "phosphor-svelte/lib/LockIcon";
 	import XIcon from "phosphor-svelte/lib/XIcon";
 
-	let { path, operations }: { path: string; operations: Operation[] } =
-		$props();
+	let {
+		path,
+		op,
+		runner,
+		docs,
+	}: {
+		path: string;
+		op: Operation;
+		runner: RequestRunner;
+		docs: Snippet;
+	} = $props();
 
-	const BASE_URL = "https://grindr.mobi";
-
-	let selectedMethod = $state<string | null>(null);
-	const op = $derived(
-		operations.find((o) => o.method === selectedMethod) ?? operations[0],
-	);
-	const opColor = $derived(methodColor(op.method));
-
-	// ── Parameters ──
 	const pathParams = $derived(op.parameters.filter((p) => p.in === "path"));
 	const groupParams = $derived.by(() => {
 		const names = op["x-query-groups"] ?? [];
@@ -50,260 +43,86 @@
 		return out;
 	});
 	const queryParams = $derived.by(() => {
-		const own = op.parameters.filter((p) => p.in === "query");
-		const merged = [...own];
+		const merged = op.parameters.filter((p) => p.in === "query");
 		for (const p of groupParams) {
 			if (!merged.some((m) => m.name === p.name)) merged.push(p);
 		}
 		return merged;
 	});
 
-	// ── Body ──
-	const jsonSchema = $derived(
-		op.requestBody?.content?.["application/json"]?.schema as
-			| SchemaObject
-			| undefined,
+	const pathModel = $state<Record<string, unknown>>({});
+	const queryModel = $state<Record<string, unknown>>({});
+	let unknownQuery = $state<string[]>([]);
+	const body = $derived(
+		op.requestBody ? new RequestBodyModel(op.requestBody, path) : null,
 	);
-	const contentType = $derived(
-		op.requestBody ? Object.keys(op.requestBody.content)[0] : undefined,
-	);
-	// Declared content type of a raw binary (file) body, e.g. application/octet-stream.
-	const binaryContentType = $derived(binaryBodyContentType(op.requestBody));
 
-	// ── Models (reset when the operation changes) ──
-	let pathModel = $state<Record<string, unknown>>({});
-	let queryModel = $state<Record<string, unknown>>({});
-	let bodyModel = $state<unknown>(undefined);
-	let bodyView = $state<"form" | "json">("form");
-	let bodyText = $state("");
-	let bodyError = $state<string | null>(null);
-	let bodyFile = $state<{ path: string; name: string; size: number } | null>(
-		null,
-	);
-	let bodyContentType = $state("");
-	let fileError = $state<string | null>(null);
-	let signed = $state(false);
 	let tab = $state("params");
-
-	let opKey = "";
-	$effect(() => {
-		const key = `${path}:${op.method}`;
-		if (key !== opKey) {
-			opKey = key;
-			pathModel = {};
-			queryModel = {};
-			bodyModel = undefined;
-			bodyView = "form";
-			bodyError = null;
-			bodyFile = null;
-			bodyContentType = binaryContentType ?? "";
-			fileError = null;
-			signed = /\/v5\/media\/upload|\/v6\/chat\/media\/upload/.test(path);
-			tab = "params";
-		}
-	});
-
-	async function pickFile() {
-		try {
-			const selected = await open({ multiple: false, directory: false });
-			if (typeof selected !== "string") return;
-			const meta = await api.statFile(selected);
-			bodyFile = { path: selected, name: meta.name, size: meta.size };
-			bodyContentType =
-				guessMimeType(meta.name) ??
-				binaryContentType ??
-				"application/octet-stream";
-			fileError = null;
-		} catch (e) {
-			fileError = String(e);
-		}
-	}
-
-	// The form is the source of truth; mirror it into the editor while in form view.
-	const builtJson = $derived(
-		bodyModel === undefined ? "" : JSON.stringify(bodyModel, null, 2),
-	);
-	$effect(() => {
-		if (bodyView === "form") bodyText = builtJson;
-	});
-
-	function onBodyInput(e: Event & { currentTarget: HTMLTextAreaElement }) {
-		bodyText = e.currentTarget.value;
-		if (bodyText.trim() === "") {
-			bodyError = null;
-			return;
-		}
-		try {
-			JSON.parse(bodyText);
-			bodyError = null;
-		} catch (err) {
-			bodyError = String(err);
-		}
-	}
-
-	// Switch view. JSON→Form syncs the edited JSON back into the form, but only if
-	// it parses; otherwise we stay on JSON and surface the error.
-	function setView(toJson: boolean) {
-		if (toJson) {
-			bodyView = "json";
-			return;
-		}
-		const t = bodyText.trim();
-		if (t === "") {
-			bodyModel = undefined;
-			bodyError = null;
-			bodyView = "form";
-			return;
-		}
-		try {
-			bodyModel = JSON.parse(t);
-			bodyError = null;
-			bodyView = "form";
-		} catch (err) {
-			bodyError = `Cannot switch to form — invalid JSON: ${err}`;
-		}
-	}
-
-	function buildPath(): string {
-		let p = path;
-		for (const param of pathParams) {
-			const val = pathModel[param.name];
-			p = p.replaceAll(
-				`{${param.name}}`,
-				encodeURIComponent(String(val ?? "")),
-			);
-		}
-		const pairs: string[] = [];
-		const enc = (name: string, x: unknown) =>
-			`${encodeURIComponent(name)}=${encodeURIComponent(String(x))}`;
-		for (const param of queryParams) {
-			const val = queryModel[param.name];
-			if (val === undefined || val === null || val === "") continue;
-			if (Array.isArray(val)) {
-				for (const item of val)
-					if (item !== undefined && item !== null && item !== "")
-						pairs.push(enc(param.name, item));
-			} else if (typeof val === "object") {
-				if (Object.keys(val).length)
-					pairs.push(enc(param.name, JSON.stringify(val)));
-			} else {
-				pairs.push(enc(param.name, val));
-			}
-		}
-		const q = pairs.join("&");
-		return q ? `${p}?${q}` : p;
-	}
+	let rootEl = $state<HTMLElement | null>(null);
 
 	const previewPath = $derived.by(() => {
 		try {
-			return buildPath();
+			return buildRequestPath(
+				path,
+				pathParams,
+				pathModel,
+				queryParams,
+				queryModel,
+				unknownQuery,
+			);
 		} catch {
 			return path;
 		}
 	});
 
-	function bodyToSend(): unknown | null {
-		if (!op.requestBody) return null;
-		const t = bodyText.trim();
-		if (t === "") return null;
-		if (!jsonSchema) return t; // non-JSON content type: best-effort raw text
-		let parsed: unknown;
+	let urlHasFocus = $state(false);
+	let urlText = $state("");
+
+	function requestPathOf(text: string): string | null {
 		try {
-			parsed = JSON.parse(t);
+			const url = new URL(text, API_BASE_URL);
+			return url.pathname + url.search;
 		} catch {
-			throw new Error("Request body is not valid JSON");
-		}
-		if (
-			parsed !== null &&
-			typeof parsed === "object" &&
-			!Array.isArray(parsed) &&
-			Object.keys(parsed).length === 0 &&
-			!op.requestBody.required
-		) {
 			return null;
 		}
-		return parsed;
 	}
 
-	// ── Auth gating ──
-	const requiresAuth = $derived(!!op.security?.length);
-	const blocked = $derived(requiresAuth && accounts.activeId === null);
-
-	let rootEl = $state<HTMLElement | null>(null);
-	let sending = $state(false);
-	let cancelled = $state(false);
-	let currentRequestId = "";
-	let sendError = $state<string | null>(null);
-	let response = $state<{ status: number; body: string } | null>(null);
-	let elapsed = $state<number | null>(null);
-
-	const parsedResponse = $derived.by(() => {
-		if (!response) return { ok: false, value: null as unknown };
-		try {
-			return { ok: true, value: JSON.parse(response.body) as unknown };
-		} catch {
-			return { ok: false, value: null as unknown };
-		}
+	$effect(() => {
+		const canonical = API_BASE_URL + previewPath;
+		if (urlHasFocus) return;
+		if (untrack(() => urlText) !== canonical) urlText = canonical;
 	});
 
-	function statusClass(status: number): string {
-		if (status >= 200 && status < 300)
-			return "text-green-600 dark:text-green-400";
-		if (status >= 400) return "text-destructive";
-		return "text-muted-foreground";
-	}
-
-	async function send() {
-		if (sending || blocked) return;
-		sending = true;
-		cancelled = false;
-		sendError = null;
-		response = null;
-		elapsed = null;
-		tab = "response";
-		rootEl
-			?.closest("[data-scroll-container]")
-			?.scrollTo({ top: 0, behavior: "smooth" });
-		const id = crypto.randomUUID();
-		currentRequestId = id;
-		const start = performance.now();
-		try {
-			let body: unknown | null = null;
-			let file: {
-				path: string;
-				contentType: string;
-				signed: boolean;
-			} | null = null;
-			if (binaryContentType) {
-				if (!bodyFile) throw new Error("Select a file to upload.");
-				file = {
-					path: bodyFile.path,
-					contentType: bodyContentType.trim() || binaryContentType,
-					signed,
-				};
-			} else {
-				body = bodyToSend();
-			}
-			response = await api.sendRequest(
-				op.method.toUpperCase(),
-				buildPath(),
-				body,
-				id,
-				file,
-			);
-		} catch (e) {
-			// A user-initiated cancel rejects too; show it as neutral, not an error.
-			if (!cancelled) sendError = String(e);
-		} finally {
-			elapsed = Math.round(performance.now() - start);
-			sending = false;
+	function syncModelsFromUrl(e: Event & { currentTarget: HTMLInputElement }) {
+		const requestPath = requestPathOf(e.currentTarget.value);
+		if (requestPath === null) return;
+		const parsed = parseRequestPath(path, requestPath, pathParams, queryParams);
+		if (!parsed) return;
+		Object.assign(pathModel, parsed.path);
+		for (const [name, value] of Object.entries(parsed.query)) {
+			if (value === undefined) delete queryModel[name];
+			else queryModel[name] = value;
 		}
+		unknownQuery = parsed.unknownQuery;
 	}
 
-	function cancel() {
-		if (!sending) return;
-		cancelled = true;
-		void api.cancelRequest(currentRequestId);
+	const blocked = $derived(!!op.security?.length && accounts.activeId === null);
+
+	function send() {
+		if (runner.sending || blocked) return;
+		const requestPath = requestPathOf(urlText) ?? previewPath;
+		let json: unknown | null = null;
+		let file: BodyFile | null = null;
+		try {
+			if (body?.binaryContentType) file = body.toFile();
+			else json = body?.toJson() ?? null;
+		} catch (e) {
+			runner.fail(String(e));
+			return;
+		}
+		void runner.run((id) =>
+			api.sendRequest(op.method.toUpperCase(), requestPath, json, id, file),
+		);
 	}
 
 	onMount(() => {
@@ -311,7 +130,7 @@
 			if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
 				if (!rootEl || rootEl.offsetParent === null) return;
 				e.preventDefault();
-				void send();
+				send();
 			}
 		}
 		window.addEventListener("keydown", onKeydown);
@@ -320,276 +139,92 @@
 </script>
 
 <Tabs.Root bind:ref={rootEl} bind:value={tab} class="gap-0">
-	<div
-		class="sticky top-0 z-10 flex flex-col gap-4 border-b bg-background px-6 pt-4 pb-3"
-	>
-		<div class="flex items-center gap-2">
-			{#if operations.length > 1}
-				<Select.Root
-					type="single"
-					value={op.method}
-					onValueChange={(v) => (selectedMethod = v)}
-				>
-					<Select.Trigger
-						class="w-24 shrink-0 font-mono font-bold"
-						style="color: {opColor}"
-					>
-						{op.method.toUpperCase()}
-					</Select.Trigger>
-					<Select.Content>
-						{#each operations as o (o.method)}
-							<Select.Item
-								value={o.method}
-								style="color: {METHOD_COLORS[o.method]}"
-								class="font-mono font-bold"
-							>
-								{o.method.toUpperCase()}
-							</Select.Item>
-						{/each}
-					</Select.Content>
-				</Select.Root>
-			{:else}
-				<span
-					class="shrink-0 rounded-lg border px-3 py-1.5 font-mono text-sm font-bold"
-					style="color: {opColor}">{op.method.toUpperCase()}</span
-				>
+	<div class="sticky top-0 z-10 border-b bg-background">
+		<div class="flex flex-col gap-3 px-6 pt-4 pb-3">
+			{#if op.tags?.length}
+				<div class="flex flex-wrap gap-1.5">
+					{#each op.tags as tag (tag)}
+						<a
+							href={grindrApiHref(tag)}
+							class="rounded-full bg-muted px-2 py-0.5 font-mono text-xs text-muted-foreground hover:bg-muted/80 hover:text-foreground"
+						>
+							{tag}
+						</a>
+					{/each}
+				</div>
 			{/if}
 
-			<div
-				class="flex-1 truncate rounded-lg border bg-muted/40 px-3 py-1.5 font-mono text-sm text-foreground"
-				title={BASE_URL + previewPath}
-			>
-				<span class="text-muted-foreground">{BASE_URL}</span>{previewPath}
+			<div class="flex items-center gap-2">
+				<span
+					class="shrink-0 rounded-lg border px-3 py-1.5 font-mono text-sm font-bold select-none"
+					style="color: {methodColor(op.method)}"
+				>
+					{op.method.toUpperCase()}
+				</span>
+
+				<Input
+					bind:value={urlText}
+					oninput={syncModelsFromUrl}
+					onfocus={() => (urlHasFocus = true)}
+					onblur={() => (urlHasFocus = false)}
+					spellcheck={false}
+					aria-label="Request URL"
+					title={urlText}
+					class="min-w-0 flex-1 font-mono text-sm"
+				/>
+
+				{#if runner.sending}
+					<Button
+						variant="destructive"
+						onclick={() => runner.cancel()}
+						class="shrink-0"
+					>
+						<XIcon /> Cancel
+					</Button>
+				{:else}
+					<Button onclick={send} disabled={blocked} class="shrink-0">
+						{#if blocked}<LockIcon />{:else}<PaperPlaneTiltIcon />{/if}
+						Send
+					</Button>
+				{/if}
 			</div>
 
-			{#if sending}
-				<Button variant="destructive" onclick={cancel} class="shrink-0">
-					<XIcon /> Cancel
-				</Button>
-			{:else}
-				<Button onclick={send} disabled={blocked} class="shrink-0">
-					{#if blocked}<LockIcon />{:else}<PaperPlaneTiltIcon />{/if}
-					Send
-				</Button>
+			{#if blocked}
+				<p class="text-xs text-muted-foreground">
+					This endpoint requires authorization. Select an account to send it.
+				</p>
 			{/if}
 		</div>
 
-		{#if blocked}
-			<p class="-mt-2 text-xs text-muted-foreground">
-				This endpoint requires authorization. Select an account to send it.
-			</p>
-		{/if}
-
-		<Tabs.List>
-			<Tabs.Trigger value="params">
-				Params
-				{#if pathParams.length + queryParams.length > 0}
-					<span class="text-muted-foreground">
-						({pathParams.length + queryParams.length})
-					</span>
-				{/if}
-			</Tabs.Trigger>
-			{#if op.requestBody}
-				<Tabs.Trigger value="body">Body</Tabs.Trigger>
-			{/if}
-			<Tabs.Trigger value="response">Response</Tabs.Trigger>
-		</Tabs.List>
-	</div>
-
-	<div class="px-6 pt-4 pb-2">
-		<Tabs.Content value="params" class="flex flex-col gap-5">
-			{#if pathParams.length}
-				<section class="flex flex-col gap-3">
-					<h3 class="text-xs font-semibold tracking-wide uppercase">
-						Path parameters
-					</h3>
-					{#each pathParams as param (param.name)}
-						<SchemaField
-							schema={param.schema ?? { type: "string" }}
-							label={param.name}
-							description={param.description}
-							required={param.required}
-							value={pathModel[param.name]}
-							setValue={(v) => (pathModel[param.name] = v)}
-						/>
-					{/each}
-				</section>
-			{/if}
-			{#if queryParams.length}
-				<section class="flex flex-col gap-3">
-					<h3 class="text-xs font-semibold tracking-wide uppercase">
-						Query parameters
-					</h3>
-					{#each queryParams as param (param.name)}
-						<SchemaField
-							schema={param.schema ?? { type: "string" }}
-							label={param.name}
-							description={param.description}
-							required={param.required}
-							value={queryModel[param.name]}
-							setValue={(v) => (queryModel[param.name] = v)}
-						/>
-					{/each}
-				</section>
-			{/if}
-			{#if pathParams.length + queryParams.length === 0}
-				<p class="text-sm text-muted-foreground">
-					This endpoint takes no parameters.
-				</p>
-			{/if}
-		</Tabs.Content>
-
-		{#if op.requestBody}
-			<Tabs.Content value="body" class="flex flex-col gap-3">
-				<div class="flex items-center justify-between">
-					<span class="font-mono text-xs text-muted-foreground"
-						>{contentType}</span
-					>
-					{#if jsonSchema}
-						<div class="flex items-center gap-2 text-xs">
-							<span
-								class={bodyView === "form"
-									? "font-medium"
-									: "text-muted-foreground"}>Form</span
-							>
-							<Switch
-								bind:checked={() => bodyView === "json", (v) => setView(v)}
-								aria-label="Toggle JSON editor"
-							/>
-							<span
-								class={bodyView === "json"
-									? "font-medium"
-									: "text-muted-foreground"}>JSON</span
-							>
-						</div>
-					{/if}
-				</div>
-
-				{#if binaryContentType}
-					<div class="flex flex-wrap items-center gap-2">
-						<Button variant="outline" size="sm" onclick={pickFile}>
-							<FileArrowUpIcon /> Select file…
-						</Button>
-						{#if bodyFile}
-							<div
-								class="flex min-w-0 items-center gap-2 rounded-lg border bg-muted/40 px-3 py-1.5 text-xs"
-							>
-								<span class="truncate font-mono">{bodyFile.name}</span>
-								<span class="shrink-0 text-muted-foreground"
-									>{formatFileSize(bodyFile.size)}</span
-								>
-								<button
-									type="button"
-									class="shrink-0 text-muted-foreground hover:text-foreground"
-									onclick={() => (bodyFile = null)}
-									aria-label="Remove file"
-								>
-									<XIcon class="size-3.5" />
-								</button>
-							</div>
-						{:else}
-							<span class="text-xs text-muted-foreground"
-								>No file selected.</span
-							>
-						{/if}
-					</div>
-					{#if fileError}
-						<span class="text-xs wrap-break-word text-destructive"
-							>{fileError}</span
-						>
-					{/if}
-					<label class="flex flex-col gap-1.5">
-						<span class="text-xs font-semibold tracking-wide uppercase"
-							>Content-Type</span
-						>
-						<Input
-							bind:value={bodyContentType}
-							spellcheck={false}
-							class="font-mono text-xs"
-							placeholder={binaryContentType}
-						/>
-					</label>
-					<span class="text-xs text-muted-foreground">
-						The file is sent as the raw request body with this Content-Type.
-					</span>
-					<label class="flex items-center justify-between gap-2">
-						<span class="text-xs font-semibold tracking-wide uppercase">
-							Sign with device key</span
-						>
-						<Switch bind:checked={signed} />
-					</label>
-					<span class="text-xs text-muted-foreground">
-						Required for <code>/v5/media/upload</code> and
-						<code>/v6/chat/media/upload</code>: registers a P-256 key and adds
-						the
-						<code>X-Sig</code> signing headers.
-					</span>
-				{:else if jsonSchema && bodyView === "form"}
-					<div class="rounded-lg border p-3">
-						<SchemaField
-							schema={jsonSchema}
-							value={bodyModel}
-							setValue={(v) => (bodyModel = v)}
-						/>
-					</div>
-				{:else}
-					<Textarea
-						value={bodyText}
-						oninput={onBodyInput}
-						spellcheck={false}
-						class="min-h-48 font-mono text-xs"
-						placeholder={jsonSchema
-							? "JSON request body"
-							: `Raw ${contentType} body`}
-					/>
-					{#if bodyError}
-						<span class="text-xs text-destructive">{bodyError}</span>
-					{/if}
-					{#if !jsonSchema}
-						<span class="text-xs text-muted-foreground">
-							Typed form is only available for application/json bodies.
+		<div class="border-t bg-muted/20 px-6 py-2">
+			<Tabs.List>
+				<Tabs.Trigger value="params">
+					Params
+					{#if pathParams.length + queryParams.length > 0}
+						<span class="text-muted-foreground">
+							({pathParams.length + queryParams.length})
 						</span>
 					{/if}
+				</Tabs.Trigger>
+				{#if body}
+					<Tabs.Trigger value="body">Body</Tabs.Trigger>
 				{/if}
+				<Tabs.Trigger value="docs">Docs</Tabs.Trigger>
+			</Tabs.List>
+		</div>
+	</div>
+
+	<div class="px-6 pt-4 pb-6 select-text">
+		<Tabs.Content value="params" class="flex flex-col gap-5">
+			<ParamsForm {pathParams} {queryParams} {pathModel} {queryModel} />
+		</Tabs.Content>
+		{#if body}
+			<Tabs.Content value="body" class="flex flex-col gap-3">
+				<BodyEditor {body} />
 			</Tabs.Content>
 		{/if}
-
-		<Tabs.Content value="response" class="flex flex-col gap-2">
-			{#if sendError}
-				<div
-					class="rounded-lg border border-destructive/30 bg-destructive/10 p-3"
-				>
-					<p class="text-sm wrap-break-word text-destructive">{sendError}</p>
-				</div>
-			{:else if response}
-				<div class="flex items-center gap-3">
-					<span
-						class="font-mono text-sm font-bold {statusClass(response.status)}"
-					>
-						{response.status}
-					</span>
-					{#if elapsed !== null}
-						<span class="text-xs text-muted-foreground">{elapsed} ms</span>
-					{/if}
-				</div>
-				<Separator />
-				{#if response.body.trim() === ""}
-					<p class="text-xs text-muted-foreground italic">
-						Empty response body.
-					</p>
-				{:else if parsedResponse.ok}
-					<JsonView json={parsedResponse.value} />
-				{:else}
-					<pre
-						class="max-h-112 overflow-auto rounded-lg border bg-muted/40 p-3 font-mono text-xs whitespace-pre-wrap">{response.body}</pre>
-				{/if}
-			{:else if cancelled}
-				<p class="text-sm text-muted-foreground">Request cancelled.</p>
-			{:else}
-				<p class="text-sm text-muted-foreground">
-					{#if sending}Sending...{:else}No response yet. Hit Send.{/if}
-				</p>
-			{/if}
+		<Tabs.Content value="docs">
+			{@render docs()}
 		</Tabs.Content>
 	</div>
 </Tabs.Root>

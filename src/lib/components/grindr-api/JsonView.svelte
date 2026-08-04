@@ -2,7 +2,7 @@
 	import type { Component } from "svelte";
 	import { onMount } from "svelte";
 
-	let { json }: { json: unknown } = $props();
+	let { json, fill = false }: { json: unknown; fill?: boolean } = $props();
 
 	let Editor = $state<Component<Record<string, unknown>> | null>(null);
 
@@ -12,7 +12,13 @@
 	});
 </script>
 
-<div class="jse-wrap overflow-hidden rounded-lg border">
+<div
+	class={[
+		"jse-wrap overflow-hidden rounded-lg border select-text",
+		fill && "min-h-0 flex-1",
+	]}
+	class:fill
+>
 	{#if Editor}
 		{@const C = Editor}
 		<C
@@ -36,5 +42,9 @@
 	.jse-wrap :global(.jse-main) {
 		min-height: 8rem;
 		max-height: 32rem;
+	}
+	.jse-wrap.fill :global(.jse-main) {
+		min-height: 0;
+		max-height: none;
 	}
 </style>
