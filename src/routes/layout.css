@@ -125,9 +125,26 @@
 	}
 	body {
 		@apply bg-background text-foreground;
+		-webkit-user-select: none;
+		user-select: none;
 	}
 	html {
 		@apply font-sans;
+	}
+	/* Unfocused fields would be swept into page selections as opaque blocks. */
+	input,
+	textarea {
+		-webkit-user-select: none;
+		user-select: none;
+	}
+	input:focus,
+	textarea:focus {
+		-webkit-user-select: text;
+		user-select: text;
+	}
+	a,
+	img {
+		-webkit-user-drag: none;
 	}
 }
 
