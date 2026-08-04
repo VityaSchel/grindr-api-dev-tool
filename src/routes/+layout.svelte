@@ -24,15 +24,20 @@
 	const isMac =
 		typeof navigator !== "undefined" && navigator.userAgent.includes("Mac");
 
+	function canonicalMethod(path: string): string | null {
+		if (path === CUSTOM_TAB_PATH) return null;
+		return getOperations("/" + path)[0]?.method ?? null;
+	}
+
 	$effect(() => {
 		const path = activePath;
 		const method = activeMethod;
 		if (!path) return;
 		untrack(() => {
-			if (path !== CUSTOM_TAB_PATH && method === null) {
-				const ops = getOperations("/" + path);
-				if (ops.length) {
-					void goto(grindrApiHref(path, { method: ops[0].method }), {
+			if (method === null) {
+				const canonical = canonicalMethod(path);
+				if (canonical) {
+					void goto(grindrApiHref(path, { method: canonical }), {
 						replaceState: true,
 					});
 					return;
@@ -89,7 +94,10 @@
 		const url = new URL(href, location.origin);
 		// Decode the pathname back to the `[...path]` value; method rides in `?m=`.
 		const path = decodeURIComponent(url.pathname.slice(LINK_PREFIX.length));
-		tabs.ensure(path, url.searchParams.get(METHOD_PARAM));
+		tabs.ensure(
+			path,
+			url.searchParams.get(METHOD_PARAM) ?? canonicalMethod(path),
+		);
 	}
 
 	onMount(() => {
