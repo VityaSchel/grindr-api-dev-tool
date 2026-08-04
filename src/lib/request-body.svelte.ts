@@ -7,8 +7,6 @@ import {
 } from "./openapi";
 import { guessMimeType } from "./utils";
 
-const SIGNED_UPLOADS = /\/v5\/media\/upload|\/v6\/chat\/media\/upload/;
-
 function isEmptyObject(value: unknown): boolean {
 	return (
 		value !== null &&
@@ -40,7 +38,9 @@ export class RequestBodyModel {
 		this.jsonSchema = spec.content["application/json"]?.schema;
 		this.binaryContentType = binaryBodyContentType(spec);
 		this.fileContentType = this.binaryContentType ?? "";
-		this.signed = SIGNED_UPLOADS.test(path);
+		void api.requiresSignature(path).then((required) => {
+			this.signed = required;
+		});
 	}
 
 	// `SchemaField` edits `model` in place, so a mirror kept on write goes stale.

@@ -63,6 +63,8 @@ export type BodyFile = { path: string; contentType: string; signed: boolean };
 // Tauri v2 commands default to `ArgumentCase::Camel` (Rust `auth_token` = js `authToken`)
 export const api = {
 	generateDevice: () => invoke<DeviceInfo>("generate_device"),
+	requiresSignature: (path: string) =>
+		invoke<boolean>("requires_signature", { path }),
 	fetchOpenapi: () => invoke<string>("fetch_openapi"),
 	listAccounts: () => invoke<AccountInfo[]>("list_accounts"),
 	getActive: () => invoke<string | null>("get_active"),
