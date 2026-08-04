@@ -1,4 +1,5 @@
 <script lang="ts">
+	import Markdown from "$lib/components/Markdown.svelte";
 	import type { Param } from "$lib/openapi";
 	import CheckIcon from "phosphor-svelte/lib/CheckIcon";
 	import SchemaLink from "./SchemaLink.svelte";
@@ -45,8 +46,12 @@
 							<span class="text-muted-foreground">–</span>
 						{/if}
 					</td>
-					<td class="px-3 py-2 align-top text-xs text-muted-foreground">
-						{param.description ?? ""}
+					<td
+						class="px-3 py-2 align-top text-xs wrap-anywhere text-muted-foreground"
+					>
+						{#if param.description}
+							<Markdown text={param.description} inline />
+						{/if}
 					</td>
 				</tr>
 			{/each}

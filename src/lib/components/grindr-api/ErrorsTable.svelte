@@ -1,4 +1,5 @@
 <script lang="ts">
+	import Markdown from "$lib/components/Markdown.svelte";
 	let { errors }: { errors: Record<string, string> } = $props();
 </script>
 
@@ -18,8 +19,10 @@
 					<td class="px-3 py-2 align-top font-mono text-xs text-destructive">
 						{code}
 					</td>
-					<td class="px-3 py-2 align-top text-xs text-muted-foreground">
-						{desc}
+					<td
+						class="px-3 py-2 align-top text-xs wrap-anywhere text-muted-foreground"
+					>
+						<Markdown text={desc} inline />
 					</td>
 				</tr>
 			{/each}

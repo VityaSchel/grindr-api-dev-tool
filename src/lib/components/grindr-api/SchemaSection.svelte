@@ -167,8 +167,12 @@
 											<span class="text-muted-foreground">–</span>
 										{/if}
 									</td>
-									<td class="px-3 py-2 align-top text-xs text-muted-foreground">
-										{propSchema.description ?? ""}
+									<td
+										class="px-3 py-2 align-top text-xs wrap-anywhere text-muted-foreground"
+									>
+										{#if propSchema.description}
+											<Markdown text={propSchema.description} inline />
+										{/if}
 									</td>
 								</tr>
 							{/each}

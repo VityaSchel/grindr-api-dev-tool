@@ -1,4 +1,5 @@
 <script lang="ts">
+	import Markdown from "$lib/components/Markdown.svelte";
 	import type { Response } from "$lib/openapi";
 	import SchemaLink from "./SchemaLink.svelte";
 
@@ -29,8 +30,12 @@
 					>
 						{code}
 					</td>
-					<td class="px-3 py-2 align-top text-xs text-muted-foreground">
-						{resp.description}
+					<td
+						class="px-3 py-2 align-top text-xs wrap-anywhere text-muted-foreground"
+					>
+						{#if resp.description}
+							<Markdown text={resp.description} inline />
+						{/if}
 					</td>
 					<td class="px-3 py-2 align-top">
 						{#if resp.content}

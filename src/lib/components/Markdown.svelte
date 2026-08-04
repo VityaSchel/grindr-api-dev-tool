@@ -2,7 +2,7 @@
 	import { marked } from "marked";
 	import { openUrl } from "@tauri-apps/plugin-opener";
 
-	let { text }: { text: string } = $props();
+	let { text, inline = false }: { text: string; inline?: boolean } = $props();
 
 	const CALLOUT =
 		/<blockquote>\s*<p>\s*\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]\s*(.*?)<\/p>([\s\S]*?)<\/blockquote>/gi;
@@ -19,13 +19,18 @@
 	}
 
 	const html = $derived(
-		renderCallouts(
-			marked((text ?? "").trim(), {
-				async: false,
-				gfm: true,
-				breaks: true,
-			}) as string,
-		),
+		inline
+			? (marked.parseInline((text ?? "").trim(), {
+					async: false,
+					gfm: true,
+				}) as string)
+			: renderCallouts(
+					marked((text ?? "").trim(), {
+						async: false,
+						gfm: true,
+						breaks: true,
+					}) as string,
+				),
 	);
 
 	function onClick(e: MouseEvent) {
@@ -38,7 +43,11 @@
 	}
 </script>
 
-<div class="md" onclick={onClick} role="presentation">
+<div
+	class={["md select-text", inline && "md-inline"]}
+	onclick={onClick}
+	role="presentation"
+>
 	<!-- eslint-disable-next-line svelte/no-at-html-tags -->
 	{@html html}
 </div>
@@ -48,6 +57,14 @@
 		margin-bottom: 0.5rem;
 		font-size: 0.875rem;
 		line-height: 1.6;
+	}
+	.md-inline,
+	.md-inline :global(code) {
+		font-size: inherit;
+		line-height: inherit;
+	}
+	.md-inline {
+		overflow-wrap: anywhere;
 	}
 	.md :global(p:last-child) {
 		margin-bottom: 0;
