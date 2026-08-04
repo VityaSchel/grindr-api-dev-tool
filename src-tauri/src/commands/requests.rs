@@ -1,13 +1,11 @@
 use std::time::Duration;
 
-use grindr::{GrindrHeaders, Method};
+use grindr::Method;
 use serde::{Deserialize, Serialize};
 use tokio::sync::oneshot;
 
 use crate::commands::REQUEST_TIMEOUT;
 use crate::state::AppState;
-
-const BASE_URL: &str = "https://grindr.mobi";
 
 const UPLOAD_TIMEOUT: Duration = Duration::from_secs(120);
 
@@ -73,8 +71,8 @@ pub(crate) async fn cancel_request(
     Ok(())
 }
 
-/// The actual HTTP work: authenticated via the active client, or an unauthenticated
-/// fallback for no-auth endpoints. Dropped (cancelled) when its `select!` arm loses.
+/// The actual HTTP work: authenticated via the active client, or unauthenticated
+/// for no-auth endpoints. Dropped (cancelled) when its `select!` arm loses.
 async fn perform_request(
     state: &AppState,
     method: Method,
@@ -93,48 +91,32 @@ async fn perform_request(
     };
 
     let client = state.active_client.lock().await.clone();
-    if let Some(client) = client {
-        let resp = match file_body {
-            Some((bytes, content_type, true)) => {
-                client
-                    .request_signed_bytes(method, path, &content_type, bytes)
-                    .await
-            }
-            Some((bytes, content_type, false)) => {
-                client
-                    .request_authenticated_bytes(method, path, &content_type, bytes)
-                    .await
-            }
-            None => client.request_authenticated_raw(method, path, body).await,
+    let resp = match (client, file_body) {
+        (Some(client), Some((bytes, content_type, true))) => {
+            client
+                .request_signed_bytes(method, path, &content_type, bytes)
+                .await
         }
-        .map_err(|e| e.to_string())?;
-        return Ok(ResponsePayload {
-            status: resp.status,
-            body: String::from_utf8_lossy(&resp.body).into_owned(),
-        });
+        (Some(client), Some((bytes, content_type, false))) => {
+            client
+                .request_authenticated_bytes(method, path, &content_type, bytes)
+                .await
+        }
+        (Some(client), None) => client.request_authenticated_raw(method, path, body).await,
+        (None, Some(_)) => {
+            return Err("Select an account to upload a file.".to_string());
+        }
+        (None, None) => {
+            state
+                .noauth_client
+                .request_no_auth_raw(method, path, body)
+                .await
+        }
     }
+    .map_err(|e| e.to_string())?;
 
-    if !path.starts_with('/') {
-        return Err("path must begin with '/'".to_string());
-    }
-    let headers = GrindrHeaders::build(&state.noauth_device, &state.noauth_ua, None, None)
-        .map_err(|e| e.to_string())?;
-    let mut req = state
-        .noauth_client
-        .request(method, format!("{BASE_URL}{path}"));
-    for (name, value) in headers.items {
-        req = req.header(name, value);
-    }
-    if let Some((bytes, content_type, _signed)) = file_body {
-        req = req.header("content-type", content_type).body(bytes);
-    } else if let Some(b) = body {
-        req = req.json(&b);
-    }
-    let resp = req.send().await.map_err(|e| e.to_string())?;
-    let status = resp.status().as_u16();
-    let bytes = resp.bytes().await.map_err(|e| e.to_string())?;
     Ok(ResponsePayload {
-        status,
-        body: String::from_utf8_lossy(&bytes).into_owned(),
+        status: resp.status,
+        body: String::from_utf8_lossy(&resp.body).into_owned(),
     })
 }

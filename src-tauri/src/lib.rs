@@ -4,14 +4,16 @@ mod state;
 mod store;
 
 use std::collections::HashMap;
+use std::time::Duration;
 
-use grindr::{build_user_agent, probe_emulation, DeviceInfo};
+use grindr::{DeviceInfo, GrindrClient};
 use tauri::Manager;
 use tokio::sync::Mutex;
 
 use crate::commands::{
     account_details, add_account, cancel_request, delete_account, fetch_openapi, generate_device,
-    get_active, list_accounts, send_request, set_active, stat_file, update_account_device,
+    get_active, list_accounts, requires_signature, send_request, set_active, stat_file,
+    update_account_device,
 };
 use crate::session::activate_stored;
 use crate::state::AppState;
@@ -31,11 +33,13 @@ pub fn run() {
             let store = load_store(&store_path);
             let active = store.active.clone();
 
-            let device = DeviceInfo::generate();
-            let ua = build_user_agent(&device, "Free");
-            let noauth_client = wreq::Client::builder()
-                .emulation(probe_emulation())
+            let noauth_client = GrindrClient::new(DeviceInfo::generate(), None)
+                .map_err(|e| format!("failed to build http client: {e}"))?;
+            // Our own docs host: no reason to reach it wearing the app's fingerprint.
+            let openapi_client = wreq::Client::builder()
                 .gzip(true)
+                .connect_timeout(Duration::from_secs(10))
+                .read_timeout(Duration::from_secs(30))
                 .build()
                 .map_err(|e| format!("failed to build http client: {e}"))?;
 
@@ -44,8 +48,7 @@ pub fn run() {
                 store: Mutex::new(store),
                 active_client: Mutex::new(None),
                 noauth_client,
-                noauth_device: device,
-                noauth_ua: ua,
+                openapi_client,
                 inflight: Mutex::new(HashMap::new()),
             });
 
@@ -114,6 +117,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             generate_device,
+            requires_signature,
             fetch_openapi,
             list_accounts,
             get_active,
