@@ -37,6 +37,32 @@
 		| "array"
 		| "oneOf";
 
+	function variantLabel(
+		variant: SchemaObject | undefined,
+		index: number,
+	): string {
+		if (!variant) return `Option ${index + 1}`;
+		const named =
+			variant["x-display-name"] ??
+			(variant.$ref ? schemaTypeLabel(variant) : undefined);
+		if (named) return named;
+
+		const resolvedVariant = normalizeSchema(variant);
+		if (resolvedVariant["x-display-name"])
+			return resolvedVariant["x-display-name"];
+		if (resolvedVariant.type === "object" || resolvedVariant.properties) {
+			const fields = Object.keys(resolvedVariant.properties ?? {});
+			if (!fields.length) return "object";
+			const shown = fields.slice(0, 3).join(", ");
+			return `object { ${shown}${fields.length > 3 ? ", …" : ""} }`;
+		}
+		return (
+			schemaTypeLabel(resolvedVariant) ||
+			schemaTypeLabel(variant) ||
+			`Option ${index + 1}`
+		);
+	}
+
 	/** Resolve `$ref` and flatten `allOf` into a single inspectable schema. */
 	function normalizeSchema(s: SchemaObject): SchemaObject {
 		let cur = s;
@@ -375,19 +401,21 @@
 	<div class="flex flex-col gap-2">
 		{@render fieldHeader()}
 		{#if present}
+			<span class="text-xs text-muted-foreground">
+				Accepts {variants.length} shapes — pick the one to send:
+			</span>
 			<Select.Root
 				type="single"
 				value={String(variantIdx)}
 				onValueChange={(v) => (variantIdx = Number(v))}
 			>
 				<Select.Trigger class="w-full">
-					{schemaTypeLabel(normalizeSchema(variants[variantIdx] ?? {})) ||
-						`Option ${variantIdx + 1}`}
+					{variantLabel(variants[variantIdx], variantIdx)}
 				</Select.Trigger>
 				<Select.Content>
 					{#each variants as variant, i (i)}
 						<Select.Item value={String(i)}>
-							{schemaTypeLabel(normalizeSchema(variant)) || `Option ${i + 1}`}
+							{variantLabel(variant, i)}
 						</Select.Item>
 					{/each}
 				</Select.Content>
