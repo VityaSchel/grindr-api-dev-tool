@@ -37,6 +37,21 @@ impl From<&StoredAccount> for AccountInfo {
     }
 }
 
+#[derive(Serialize, Clone)]
+pub(crate) struct AccountDetails {
+    pub(crate) device: DeviceInfo,
+    pub(crate) session: Session,
+}
+
+impl From<&StoredAccount> for AccountDetails {
+    fn from(a: &StoredAccount) -> Self {
+        AccountDetails {
+            device: a.device.clone(),
+            session: a.session.clone(),
+        }
+    }
+}
+
 pub(crate) fn load_store(path: &Path) -> Store {
     let Ok(bytes) = std::fs::read(path) else {
         return Store::default();

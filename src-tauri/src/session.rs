@@ -1,4 +1,4 @@
-use grindr::{GrindrClient, Session};
+use grindr::{DeviceInfo, GrindrClient, Session};
 use serde_json::json;
 use tauri::{AppHandle, Manager};
 use tokio::sync::watch;
@@ -55,14 +55,32 @@ pub(crate) async fn activate_stored(
     app: &AppHandle,
     id: &str,
 ) -> Result<(), String> {
-    let (device, session) = {
+    let device = {
         let store = state.store.lock().await;
-        let acc = store
+        store
             .accounts
             .iter()
             .find(|a| a.id == id)
-            .ok_or_else(|| format!("account not found: {id}"))?;
-        (acc.device.clone(), acc.session.clone())
+            .map(|a| a.device.clone())
+            .ok_or_else(|| format!("account not found: {id}"))?
+    };
+    activate_stored_with_device(state, app, id, device).await
+}
+
+pub(crate) async fn activate_stored_with_device(
+    state: &AppState,
+    app: &AppHandle,
+    id: &str,
+    device: DeviceInfo,
+) -> Result<(), String> {
+    let session = {
+        let store = state.store.lock().await;
+        store
+            .accounts
+            .iter()
+            .find(|a| a.id == id)
+            .map(|a| a.session.clone())
+            .ok_or_else(|| format!("account not found: {id}"))?
     };
     let client = GrindrClient::new(device, Some(session)).map_err(|e| e.to_string())?;
     set_active_client(state, app, client, id.to_string()).await;
