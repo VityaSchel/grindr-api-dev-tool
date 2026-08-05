@@ -11,7 +11,7 @@ GUI client for Grindr API, built with Rust and Tauri.
 
 [Download from releases](https://git.opengrind.org/open-grind/grindr-api-dev-tool/releases)
 
-Powered by [Grindr.rs](https://git.opengrind.org/open-grind/grindr.rs), made for [Open Grind](https://opengrindr.org)
+Powered by [grindr.rs](https://git.opengrind.org/open-grind/grindr.rs), made for [Open Grind](https://opengrindr.org).
 
 ## License
 
