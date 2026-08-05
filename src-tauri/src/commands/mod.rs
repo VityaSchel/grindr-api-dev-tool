@@ -16,7 +16,7 @@ pub(crate) use requests::{cancel_request, send_request};
 
 const OPENAPI_URL: &str = "https://opengrind.org/openapi.json";
 
-pub(crate) const REQUEST_TIMEOUT: Duration = Duration::from_secs(15);
+const REQUEST_TIMEOUT: Duration = Duration::from_secs(15);
 
 #[derive(Serialize)]
 pub(crate) struct FileMeta {

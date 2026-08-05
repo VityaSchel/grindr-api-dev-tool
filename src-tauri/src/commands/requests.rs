@@ -1,13 +1,8 @@
-use std::time::Duration;
-
 use grindr::Method;
 use serde::{Deserialize, Serialize};
 use tokio::sync::oneshot;
 
-use crate::commands::REQUEST_TIMEOUT;
 use crate::state::AppState;
-
-const UPLOAD_TIMEOUT: Duration = Duration::from_secs(120);
 
 #[derive(Serialize)]
 pub(crate) struct ResponsePayload {
@@ -36,12 +31,6 @@ pub(crate) async fn send_request(
     let method =
         Method::from_bytes(method.as_bytes()).map_err(|e| format!("invalid method: {e}"))?;
 
-    let timeout = if body_file.is_some() {
-        UPLOAD_TIMEOUT
-    } else {
-        REQUEST_TIMEOUT
-    };
-
     // Register a cancellation handle so `cancel_request` can abort this from the UI.
     let (cancel_tx, cancel_rx) = oneshot::channel::<()>();
     state
@@ -54,7 +43,6 @@ pub(crate) async fn send_request(
         res = perform_request(&state, method, &path, body, body_file) => res,
         // Sender dropped by `cancel_request` (or below on completion) resolves this.
         _ = cancel_rx => Err("request cancelled".to_string()),
-        _ = tokio::time::sleep(timeout) => Err("request timed out".to_string()),
     };
 
     state.inflight.lock().await.remove(&request_id);
