@@ -1,6 +1,6 @@
 import {
-	api,
 	type AccountInfo,
+	api,
 	type DeviceInfo,
 	type SignInCredentials,
 } from "./api";

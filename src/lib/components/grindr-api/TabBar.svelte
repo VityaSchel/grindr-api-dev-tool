@@ -1,13 +1,14 @@
 <script lang="ts">
-	import { page } from "$app/state";
 	import { goto } from "$app/navigation";
 	import { resolve } from "$app/paths";
-	import { tabs, tabKey, type Tab } from "$lib/tabs.svelte";
-	import { grindrApiHref, METHOD_PARAM, CUSTOM_TAB_PATH } from "$lib/links";
-	import { navTitle } from "$lib/components/sidebar";
-	import { methodColor } from "$lib/methods";
-	import * as Tabs from "$lib/components/ui/tabs";
+	import { page } from "$app/state";
 	import XIcon from "phosphor-svelte/lib/XIcon";
+
+	import { navTitle } from "$lib/components/sidebar";
+	import * as Tabs from "$lib/components/ui/tabs";
+	import { CUSTOM_TAB_PATH, grindrApiHref, METHOD_PARAM } from "$lib/links";
+	import { methodColor } from "$lib/methods";
+	import { type Tab, tabKey, tabs } from "$lib/tabs.svelte";
 
 	// The active tab is whichever matches the current URL (path + method query).
 	const activePath = $derived(page.params.path ?? null);
@@ -53,7 +54,7 @@
 						{#if tab.method}
 							<span
 								class="shrink-0 font-mono text-[0.6rem] font-bold"
-								style="color: {methodColor(tab.method)}"
+								style:color={methodColor(tab.method)}
 							>
 								{tab.method.toUpperCase()}
 							</span>

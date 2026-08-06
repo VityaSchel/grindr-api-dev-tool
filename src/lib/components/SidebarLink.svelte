@@ -7,10 +7,6 @@
 
 <a
 	{...props}
-	class={[
-		props.class,
-		{
-			"bg-accent": page?.url.pathname === props.href,
-		},
-	]}>{@render props.children?.()}</a
+	class={[props.class, { "bg-accent": page?.url.pathname === props.href }]}
+	>{@render props.children?.()}</a
 >

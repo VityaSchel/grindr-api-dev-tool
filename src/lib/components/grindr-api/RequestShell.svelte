@@ -1,16 +1,21 @@
 <script lang="ts">
 	import type { Snippet } from "svelte";
+
 	import {
-		responsePane,
 		MIN_REQUEST_HEIGHT,
 		MIN_RESPONSE_HEIGHT,
+		responsePane,
 	} from "$lib/response-pane.svelte";
 
 	let {
 		request,
 		response,
 		showResponse = true,
-	}: { request: Snippet; response: Snippet; showResponse?: boolean } = $props();
+	}: {
+		request: Snippet;
+		response: Snippet;
+		showResponse?: boolean;
+	} = $props();
 
 	let root = $state<HTMLElement | null>(null);
 
@@ -71,7 +76,8 @@
 
 		<div
 			class="flex shrink-0 flex-col"
-			style="height: {responsePane.current}px; max-height: calc(100% - {MIN_REQUEST_HEIGHT}px)"
+			style:height="{responsePane.current}px"
+			style:max-height="calc(100% - {MIN_REQUEST_HEIGHT}px)"
 		>
 			{@render response()}
 		</div>

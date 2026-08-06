@@ -1,22 +1,22 @@
 <script lang="ts">
+	import OperationSection from "$lib/components/grindr-api/OperationSection.svelte";
+	import ParamTable from "$lib/components/grindr-api/ParamTable.svelte";
+	import RequestBuilder from "$lib/components/grindr-api/RequestBuilder.svelte";
+	import RequestShell from "$lib/components/grindr-api/RequestShell.svelte";
+	import ResponsePane from "$lib/components/grindr-api/ResponsePane.svelte";
+	import SchemaSection from "$lib/components/grindr-api/SchemaSection.svelte";
+	import Markdown from "$lib/components/Markdown.svelte";
+	import { Separator } from "$lib/components/ui/separator";
+	import WIPBadge from "$lib/components/WIPBadge.svelte";
 	import {
 		getOperations,
 		getOperationsForTag,
-		getTag,
-		getSchemasForTag,
 		getParamGroupsForTag,
+		getSchemasForTag,
+		getTag,
 		resolveGroupParams,
 	} from "$lib/openapi";
 	import { RequestRunner } from "$lib/request.svelte";
-	import Markdown from "$lib/components/Markdown.svelte";
-	import { Separator } from "$lib/components/ui/separator";
-	import RequestShell from "$lib/components/grindr-api/RequestShell.svelte";
-	import RequestBuilder from "$lib/components/grindr-api/RequestBuilder.svelte";
-	import ResponsePane from "$lib/components/grindr-api/ResponsePane.svelte";
-	import OperationSection from "$lib/components/grindr-api/OperationSection.svelte";
-	import SchemaSection from "$lib/components/grindr-api/SchemaSection.svelte";
-	import ParamTable from "$lib/components/grindr-api/ParamTable.svelte";
-	import WIPBadge from "$lib/components/WIPBadge.svelte";
 
 	// The `[...path]` rest value, e.g. "v3/cascade" — owned by the tab, not the URL,
 	// so the view stays mounted (and its request state alive) across tab switches.
@@ -119,13 +119,19 @@
 					</h2>
 					{#each paramGroups as { name, group } (name)}
 						<div id={name} class="mb-6 scroll-mt-4">
-							<h3 class="mb-1 font-mono text-sm font-semibold">{name}</h3>
+							<h3 class="mb-1 font-mono text-sm font-semibold">
+								{name}
+							</h3>
 							{#if group["x-inherits"]}
 								<p class="mb-2 text-xs text-muted-foreground">
-									Extends: <span class="font-mono">{group["x-inherits"]}</span>
+									Extends: <span class="font-mono"
+										>{group["x-inherits"]}</span
+									>
 								</p>
 							{/if}
-							<ParamTable parameters={resolveGroupParams(group)} />
+							<ParamTable
+								parameters={resolveGroupParams(group)}
+							/>
 						</div>
 					{/each}
 				</div>
@@ -150,7 +156,9 @@
 	<div data-scroll-container class="h-full overflow-auto">
 		<div class="p-6 text-muted-foreground select-text">
 			<p class="text-sm">
-				No endpoint or tag found for <code class="font-mono">{pathKey}</code>
+				No endpoint or tag found for <code class="font-mono"
+					>{pathKey}</code
+				>
 			</p>
 		</div>
 	</div>

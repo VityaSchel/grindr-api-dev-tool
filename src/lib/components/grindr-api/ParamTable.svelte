@@ -1,7 +1,8 @@
 <script lang="ts">
+	import CheckIcon from "phosphor-svelte/lib/CheckIcon";
+
 	import Markdown from "$lib/components/Markdown.svelte";
 	import type { Param } from "$lib/openapi";
-	import CheckIcon from "phosphor-svelte/lib/CheckIcon";
 	import SchemaLink from "./SchemaLink.svelte";
 
 	let { parameters }: { parameters: Param[] } = $props();
@@ -26,12 +27,16 @@
 					<td class="px-3 py-2 align-top font-mono text-xs">
 						{param.name}
 						{#if param.deprecated}
-							<span class="ml-1 text-xs text-muted-foreground line-through">
+							<span
+								class="ml-1 text-xs text-muted-foreground line-through"
+							>
 								deprecated
 							</span>
 						{/if}
 					</td>
-					<td class="px-3 py-2 align-top text-xs text-muted-foreground">
+					<td
+						class="px-3 py-2 align-top text-xs text-muted-foreground"
+					>
 						{param.in}
 					</td>
 					<td class="px-3 py-2 align-top">

@@ -1,11 +1,7 @@
 {
 	"svelte.enable-ts-plugin": true,
-	"files.associations": {
-		"*.css": "tailwindcss"
-	},
+	"files.associations": { "*.css": "tailwindcss" },
 	"editor.formatOnSave": true,
 	"editor.detectIndentation": false,
-	"editor.quickSuggestions": {
-		"strings": "on"
-	}
+	"editor.quickSuggestions": { "strings": "on" }
 }

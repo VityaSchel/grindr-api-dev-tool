@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { marked } from "marked";
 	import { openUrl } from "@tauri-apps/plugin-opener";
+	import { marked } from "marked";
 
 	let { text, inline = false }: { text: string; inline?: boolean } = $props();
 
@@ -20,16 +20,16 @@
 
 	const html = $derived(
 		inline
-			? (marked.parseInline((text ?? "").trim(), {
+			? marked.parseInline((text ?? "").trim(), {
 					async: false,
 					gfm: true,
-				}) as string)
+				})
 			: renderCallouts(
 					marked((text ?? "").trim(), {
 						async: false,
 						gfm: true,
 						breaks: true,
-					}) as string,
+					}),
 				),
 	);
 
@@ -38,13 +38,15 @@
 		const href = anchor?.getAttribute("href");
 		if (href && /^https?:\/\//i.test(href)) {
 			e.preventDefault();
-			openUrl(href).catch((err) => console.error("failed to open url", err));
+			openUrl(href).catch((err) =>
+				console.error("failed to open url", err),
+			);
 		}
 	}
 </script>
 
 <div
-	class={["md select-text", inline && "md-inline"]}
+	class={["md select-text", { "md-inline": inline }]}
 	onclick={onClick}
 	role="presentation"
 >

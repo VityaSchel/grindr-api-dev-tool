@@ -1,13 +1,14 @@
 <script lang="ts">
-	import type { RequestBodyModel } from "$lib/request-body.svelte";
-	import { formatFileSize } from "$lib/utils";
-	import SchemaField from "./SchemaField.svelte";
-	import { Switch } from "$lib/components/ui/switch";
-	import { Textarea } from "$lib/components/ui/textarea";
-	import { Input } from "$lib/components/ui/input";
-	import { Button } from "$lib/components/ui/button";
 	import FileArrowUpIcon from "phosphor-svelte/lib/FileArrowUpIcon";
 	import XIcon from "phosphor-svelte/lib/XIcon";
+
+	import { Button } from "$lib/components/ui/button";
+	import { Input } from "$lib/components/ui/input";
+	import { Switch } from "$lib/components/ui/switch";
+	import { Textarea } from "$lib/components/ui/textarea";
+	import { formatFileSize } from "$lib/utils";
+	import type { RequestBodyModel } from "$lib/request-body.svelte";
+	import SchemaField from "./SchemaField.svelte";
 
 	let { body }: { body: RequestBodyModel } = $props();
 </script>
@@ -19,18 +20,25 @@
 	{#if body.jsonSchema}
 		<div class="flex items-center gap-2 text-xs">
 			<span
-				class={body.view === "form" ? "font-medium" : "text-muted-foreground"}
+				class={{
+					"font-medium": body.view === "form",
+					"text-muted-foreground": body.view !== "form",
+				}}
 			>
 				Form
 			</span>
 			<Switch
 				bind:checked={
-					() => body.view === "json", (v) => body.setView(v ? "json" : "form")
+					() => body.view === "json",
+					(v) => body.setView(v ? "json" : "form")
 				}
 				aria-label="Toggle JSON editor"
 			/>
 			<span
-				class={body.view === "json" ? "font-medium" : "text-muted-foreground"}
+				class={{
+					"font-medium": body.view === "json",
+					"text-muted-foreground": body.view !== "json",
+				}}
 			>
 				JSON
 			</span>

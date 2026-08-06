@@ -23,7 +23,9 @@ export function toCredentials(form: SignInForm): SignInCredentials | null {
 		case "token": {
 			const email = form.email.trim();
 			const authToken = form.authToken.trim();
-			return email && authToken ? { method: "token", email, authToken } : null;
+			return email && authToken
+				? { method: "token", email, authToken }
+				: null;
 		}
 		case "password": {
 			const email = form.email.trim();

@@ -1,34 +1,31 @@
 <script lang="ts">
-	import { onMount, untrack, type Snippet } from "svelte";
-	import type { Operation, Param } from "$lib/openapi";
-	import { getParamGroupsForTag, resolveGroupParams } from "$lib/openapi";
+	import LockIcon from "phosphor-svelte/lib/LockIcon";
+	import PaperPlaneTiltIcon from "phosphor-svelte/lib/PaperPlaneTiltIcon";
+	import XIcon from "phosphor-svelte/lib/XIcon";
+	import { onMount, type Snippet, untrack } from "svelte";
+
 	import { accounts } from "$lib/accounts.svelte";
 	import { api, type BodyFile } from "$lib/api";
-	import { methodColor } from "$lib/methods";
-	import { API_BASE_URL, grindrApiHref } from "$lib/links";
-	import { buildRequestPath, parseRequestPath } from "$lib/request-path";
-	import { RequestBodyModel } from "$lib/request-body.svelte";
-	import type { RequestRunner } from "$lib/request.svelte";
-	import ParamsForm from "./ParamsForm.svelte";
-	import BodyEditor from "./BodyEditor.svelte";
-	import * as Tabs from "$lib/components/ui/tabs";
 	import { Button } from "$lib/components/ui/button";
 	import { Input } from "$lib/components/ui/input";
-	import PaperPlaneTiltIcon from "phosphor-svelte/lib/PaperPlaneTiltIcon";
-	import LockIcon from "phosphor-svelte/lib/LockIcon";
-	import XIcon from "phosphor-svelte/lib/XIcon";
+	import * as Tabs from "$lib/components/ui/tabs";
+	import { API_BASE_URL, grindrApiHref } from "$lib/links";
+	import { methodColor } from "$lib/methods";
+	import { getParamGroupsForTag, resolveGroupParams } from "$lib/openapi";
+	import { RequestBodyModel } from "$lib/request-body.svelte";
+	import { buildRequestPath, parseRequestPath } from "$lib/request-path";
+	import type { Operation, Param } from "$lib/openapi";
+	import type { RequestRunner } from "$lib/request.svelte";
+	import BodyEditor from "./BodyEditor.svelte";
+	import ParamsForm from "./ParamsForm.svelte";
 
 	let {
 		path,
 		op,
 		runner,
 		docs,
-	}: {
-		path: string;
-		op: Operation;
-		runner: RequestRunner;
-		docs: Snippet;
-	} = $props();
+	}: { path: string; op: Operation; runner: RequestRunner; docs: Snippet } =
+		$props();
 
 	const pathParams = $derived(op.parameters.filter((p) => p.in === "path"));
 	const groupParams = $derived.by(() => {
@@ -37,7 +34,8 @@
 		const out: Param[] = [];
 		for (const tag of op.tags ?? []) {
 			for (const { name, group } of getParamGroupsForTag(tag)) {
-				if (names.includes(name)) out.push(...resolveGroupParams(group));
+				if (names.includes(name))
+					out.push(...resolveGroupParams(group));
 			}
 		}
 		return out;
@@ -96,7 +94,12 @@
 	function syncModelsFromUrl(e: Event & { currentTarget: HTMLInputElement }) {
 		const requestPath = requestPathOf(e.currentTarget.value);
 		if (requestPath === null) return;
-		const parsed = parseRequestPath(path, requestPath, pathParams, queryParams);
+		const parsed = parseRequestPath(
+			path,
+			requestPath,
+			pathParams,
+			queryParams,
+		);
 		if (!parsed) return;
 		Object.assign(pathModel, parsed.path);
 		for (const [name, value] of Object.entries(parsed.query)) {
@@ -106,7 +109,9 @@
 		unknownQuery = parsed.unknownQuery;
 	}
 
-	const blocked = $derived(!!op.security?.length && accounts.activeId === null);
+	const blocked = $derived(
+		!!op.security?.length && accounts.activeId === null,
+	);
 
 	function send() {
 		if (runner.sending || blocked) return;
@@ -121,7 +126,13 @@
 			return;
 		}
 		void runner.run((id) =>
-			api.sendRequest(op.method.toUpperCase(), requestPath, json, id, file),
+			api.sendRequest(
+				op.method.toUpperCase(),
+				requestPath,
+				json,
+				id,
+				file,
+			),
 		);
 	}
 
@@ -157,7 +168,7 @@
 			<div class="flex items-center gap-2">
 				<span
 					class="shrink-0 rounded-lg border px-3 py-1.5 font-mono text-sm font-bold select-none"
-					style="color: {methodColor(op.method)}"
+					style:color={methodColor(op.method)}
 				>
 					{op.method.toUpperCase()}
 				</span>
@@ -183,7 +194,8 @@
 					</Button>
 				{:else}
 					<Button onclick={send} disabled={blocked} class="shrink-0">
-						{#if blocked}<LockIcon />{:else}<PaperPlaneTiltIcon />{/if}
+						{#if blocked}<LockIcon />{:else}<PaperPlaneTiltIcon
+							/>{/if}
 						Send
 					</Button>
 				{/if}
@@ -191,7 +203,8 @@
 
 			{#if blocked}
 				<p class="text-xs text-muted-foreground">
-					This endpoint requires authorization. Select an account to send it.
+					This endpoint requires authorization. Select an account to
+					send it.
 				</p>
 			{/if}
 		</div>

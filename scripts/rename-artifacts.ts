@@ -1,12 +1,13 @@
 import { renameSync } from "node:fs";
 import path from "node:path";
+
 import {
 	bundleDirs,
 	findArtifacts,
+	type Platform,
 	PLATFORMS,
 	readManifest,
 	targetName,
-	type Platform,
 } from "./artifacts";
 
 function main(platform?: Platform): void {

@@ -1,16 +1,22 @@
 <script lang="ts">
-	import { resolveRef, schemaTypeLabel, type SchemaObject } from "$lib/openapi";
-	import * as Select from "$lib/components/ui/select";
-	import * as RadioGroup from "$lib/components/ui/radio-group";
-	import * as Tooltip from "$lib/components/ui/tooltip";
-	import { Input } from "$lib/components/ui/input";
+	import PlusIcon from "phosphor-svelte/lib/PlusIcon";
+	import TrashIcon from "phosphor-svelte/lib/TrashIcon";
+
+	import Markdown from "$lib/components/Markdown.svelte";
+	import { Button } from "$lib/components/ui/button";
 	import { Checkbox } from "$lib/components/ui/checkbox";
+	import { Input } from "$lib/components/ui/input";
+	import * as RadioGroup from "$lib/components/ui/radio-group";
+	import * as Select from "$lib/components/ui/select";
 	import { Switch } from "$lib/components/ui/switch";
 	import { Toggle } from "$lib/components/ui/toggle";
-	import { Button } from "$lib/components/ui/button";
-	import Markdown from "$lib/components/Markdown.svelte";
-	import TrashIcon from "phosphor-svelte/lib/TrashIcon";
-	import PlusIcon from "phosphor-svelte/lib/PlusIcon";
+	import * as Tooltip from "$lib/components/ui/tooltip";
+	import {
+		resolveRef,
+		type SchemaObject,
+		schemaTypeLabel,
+	} from "$lib/openapi";
+	import { stringifyValue } from "$lib/utils";
 	import SchemaField from "./SchemaField.svelte";
 
 	type Props = {
@@ -76,7 +82,10 @@
 			for (const sub of cur.allOf) {
 				const ns = normalizeSchema(sub);
 				Object.assign(merged.properties!, ns.properties ?? {});
-				merged.required = [...(merged.required ?? []), ...(ns.required ?? [])];
+				merged.required = [
+					...(merged.required ?? []),
+					...(ns.required ?? []),
+				];
 				if (ns.type) merged.type = ns.type;
 				if (ns.description && !merged.description)
 					merged.description = ns.description;
@@ -202,9 +211,7 @@
 			label: resolved["x-enum-labels"]?.[String(e)] ?? String(e),
 		})),
 	);
-	const currentStr = $derived(
-		value === undefined || value === null ? "" : String(value),
-	);
+	const currentStr = $derived(stringifyValue(value));
 	function edit(v: unknown) {
 		setValue(v);
 	}
@@ -212,7 +219,9 @@
 		const opt = enumOptions.find((o) => o.v === v);
 		edit(opt ? opt.original : undefined);
 	}
-	const useRadio = $derived(enumOptions.length > 0 && enumOptions.length <= 4);
+	const useRadio = $derived(
+		enumOptions.length > 0 && enumOptions.length <= 4,
+	);
 
 	// ── oneOf/anyOf ──
 	const variants = $derived(resolved.oneOf ?? resolved.anyOf ?? []);
@@ -249,7 +258,8 @@
 			</Tooltip.Root>
 		</Tooltip.Provider>
 	{:else if typeName}
-		<span class="font-mono text-[0.7rem] text-muted-foreground">{typeName}</span
+		<span class="font-mono text-[0.7rem] text-muted-foreground"
+			>{typeName}</span
 		>
 	{/if}
 {/snippet}
@@ -270,11 +280,15 @@
 				<span
 					class={[
 						"text-xs font-medium",
-						resolved.deprecated && "text-muted-foreground line-through",
-						!present && "text-muted-foreground",
+						{
+							"text-muted-foreground line-through":
+								resolved.deprecated,
+							"text-muted-foreground": !present,
+						},
 					]}
 				>
-					{label}{#if showStar}<span class="text-destructive">*</span>{/if}
+					{label}{#if showStar}<span class="text-destructive">*</span
+						>{/if}
 				</span>
 				{@render typeBadge()}
 			</div>
@@ -295,9 +309,7 @@
 			onPressedChange={setNull}
 			class={[
 				"h-8 shrink-0 px-1.5 font-mono text-[0.65rem] tracking-wide",
-				{
-					"bg-primary hover:bg-primary-foreground": isNull,
-				},
+				{ "bg-primary hover:bg-primary-foreground": isNull },
 			]}
 			aria-label="Set null"
 		>
@@ -320,7 +332,7 @@
 				<div
 					class={[
 						"flex flex-col gap-3",
-						depth > 0 && "border-l border-muted pl-3",
+						{ "border-l border-muted pl-3": depth > 0 },
 					]}
 				>
 					{#each objProps as [propName, propSchema] (propName)}
@@ -332,7 +344,8 @@
 							setPresent={(b) => {
 								if (b) {
 									if (!(propName in objValue))
-										objValue[propName] = blankItem(propSchema);
+										objValue[propName] =
+											blankItem(propSchema);
 								} else {
 									delete objValue[propName];
 								}
@@ -457,9 +470,13 @@
 					>
 						{#each enumOptions as opt (opt.v)}
 							<div class="flex items-center gap-1.5">
-								<RadioGroup.Item value={opt.v} id={`${fieldId}-${opt.v}`} />
-								<label for={`${fieldId}-${opt.v}`} class="text-xs"
-									>{opt.label}</label
+								<RadioGroup.Item
+									value={opt.v}
+									id={`${fieldId}-${opt.v}`}
+								/>
+								<label
+									for={`${fieldId}-${opt.v}`}
+									class="text-xs">{opt.label}</label
 								>
 							</div>
 						{/each}
@@ -472,8 +489,8 @@
 						onValueChange={pickEnum}
 					>
 						<Select.Trigger class="w-full">
-							{enumOptions.find((o) => o.v === currentStr)?.label ??
-								"Select..."}
+							{enumOptions.find((o) => o.v === currentStr)
+								?.label ?? "Select..."}
 						</Select.Trigger>
 						<Select.Content>
 							{#each enumOptions as opt (opt.v)}

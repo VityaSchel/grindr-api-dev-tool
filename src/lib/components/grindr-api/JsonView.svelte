@@ -1,6 +1,6 @@
 <script lang="ts">
-	import type { Component } from "svelte";
 	import { onMount } from "svelte";
+	import type { Component } from "svelte";
 
 	let { json, fill = false }: { json: unknown; fill?: boolean } = $props();
 
@@ -8,16 +8,15 @@
 
 	onMount(async () => {
 		const mod = await import("svelte-jsoneditor");
-		Editor = mod.JSONEditor as unknown as Component<Record<string, unknown>>;
+		Editor = mod.JSONEditor;
 	});
 </script>
 
 <div
 	class={[
 		"jse-wrap overflow-hidden rounded-lg border select-text",
-		fill && "min-h-0 flex-1",
+		{ "min-h-0 flex-1": fill, fill },
 	]}
-	class:fill
 >
 	{#if Editor}
 		{@const C = Editor}

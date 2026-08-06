@@ -1,11 +1,12 @@
 <script lang="ts">
+	import CheckIcon from "phosphor-svelte/lib/CheckIcon";
+	import { SvelteSet } from "svelte/reactivity";
+
+	import Markdown from "$lib/components/Markdown.svelte";
+	import WIPBadge from "$lib/components/WIPBadge.svelte";
 	import { getSchema } from "$lib/openapi";
 	import type { SchemaObject } from "$lib/openapi";
 	import SchemaLink from "./SchemaLink.svelte";
-	import Markdown from "$lib/components/Markdown.svelte";
-	import { SvelteSet } from "svelte/reactivity";
-	import WIPBadge from "$lib/components/WIPBadge.svelte";
-	import CheckIcon from "phosphor-svelte/lib/CheckIcon";
 
 	let { name }: { name: string } = $props();
 
@@ -21,7 +22,7 @@
 	);
 
 	const mergedProperties = $derived.by(() => {
-		if (!schema) return {} as Record<string, SchemaObject>;
+		if (!schema) return {};
 		if (schema.properties) return schema.properties;
 		if (schema.allOf) {
 			const merged: Record<string, SchemaObject> = {};
@@ -30,7 +31,7 @@
 			}
 			return merged;
 		}
-		return {} as Record<string, SchemaObject>;
+		return {};
 	});
 
 	const requiredSet = $derived.by(() => {
@@ -56,7 +57,8 @@
 			<WIPBadge />
 		{/if}
 		{#if displayName !== name}
-			<span class="font-mono text-xs text-muted-foreground">({name})</span>
+			<span class="font-mono text-xs text-muted-foreground">({name})</span
+			>
 		{/if}
 	</div>
 
@@ -83,9 +85,15 @@
 						</thead>
 						<tbody>
 							{#each Object.entries(schema["x-enum-labels"]) as [val, label] (val)}
-								<tr class="border-b last:border-0 hover:bg-muted/20">
-									<td class="px-3 py-2 font-mono text-xs">{val}</td>
-									<td class="px-3 py-2 text-xs text-muted-foreground">
+								<tr
+									class="border-b last:border-0 hover:bg-muted/20"
+								>
+									<td class="px-3 py-2 font-mono text-xs"
+										>{val}</td
+									>
+									<td
+										class="px-3 py-2 text-xs text-muted-foreground"
+									>
 										{label}
 									</td>
 								</tr>
@@ -110,11 +118,15 @@
 					One of:
 				</span>
 				{#each variants as variant, vi (vi)}
-					{#if vi > 0}<span class="text-muted-foreground">, </span>{/if}
+					{#if vi > 0}<span class="text-muted-foreground"
+							>,
+						</span>{/if}
 					{#if variant.$ref}
 						<SchemaLink schema={variant} />
 					{:else}
-						<span class="font-mono text-xs">{variant.type ?? "?"}</span>
+						<span class="font-mono text-xs"
+							>{variant.type ?? "?"}</span
+						>
 					{/if}
 				{/each}
 			</div>
@@ -127,8 +139,12 @@
 						Extends:
 					</span>
 					{#each baseRefs as ref, ri (ref)}
-						{#if ri > 0}<span class="text-muted-foreground">, </span>{/if}
-						<SchemaLink schema={{ $ref: `#/components/schemas/${ref}` }} />
+						{#if ri > 0}<span class="text-muted-foreground"
+								>,
+							</span>{/if}
+						<SchemaLink
+							schema={{ $ref: `#/components/schemas/${ref}` }}
+						/>
 					{/each}
 				</div>
 			{/if}
@@ -143,12 +159,16 @@
 								<th class="px-3 py-2 font-medium">Property</th>
 								<th class="px-3 py-2 font-medium">Type</th>
 								<th class="px-3 py-2 font-medium">Required</th>
-								<th class="px-3 py-2 font-medium">Description</th>
+								<th class="px-3 py-2 font-medium"
+									>Description</th
+								>
 							</tr>
 						</thead>
 						<tbody>
 							{#each Object.entries(mergedProperties) as [propName, propSchema] (propName)}
-								<tr class="border-b last:border-0 hover:bg-muted/20">
+								<tr
+									class="border-b last:border-0 hover:bg-muted/20"
+								>
 									<td
 										class="px-3 py-2 align-top font-mono text-xs
 										{propSchema.deprecated ? 'text-muted-foreground line-through' : ''}"
@@ -160,18 +180,25 @@
 									</td>
 									<td class="px-3 py-2 align-top text-xs">
 										{#if requiredSet.has(propName)}
-											<span class="font-bold text-destructive">
+											<span
+												class="font-bold text-destructive"
+											>
 												<CheckIcon />
 											</span>
 										{:else}
-											<span class="text-muted-foreground">–</span>
+											<span class="text-muted-foreground"
+												>–</span
+											>
 										{/if}
 									</td>
 									<td
 										class="px-3 py-2 align-top text-xs wrap-anywhere text-muted-foreground"
 									>
 										{#if propSchema.description}
-											<Markdown text={propSchema.description} inline />
+											<Markdown
+												text={propSchema.description}
+												inline
+											/>
 										{/if}
 									</td>
 								</tr>
@@ -180,7 +207,9 @@
 					</table>
 				</div>
 			{:else if !baseRefs.length}
-				<p class="text-sm text-muted-foreground">No properties documented.</p>
+				<p class="text-sm text-muted-foreground">
+					No properties documented.
+				</p>
 			{/if}
 		{/if}
 	{/if}

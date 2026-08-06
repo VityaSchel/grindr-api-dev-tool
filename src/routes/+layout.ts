@@ -1,6 +1,7 @@
 import { error } from "@sveltejs/kit";
-import { loadOpenApi, OPENAPI_URL } from "$lib/openapi";
+
 import { buildNav } from "$lib/components/sidebar";
+import { loadOpenApi, OPENAPI_URL } from "$lib/openapi";
 
 // Tauri doesn't have a Node.js server to do proper SSR
 // so we use adapter-static with a fallback to index.html to put the site in SPA mode
@@ -14,7 +15,7 @@ export async function load() {
 	} catch (e) {
 		error(
 			503,
-			`Could not load the OpenAPI spec from ${OPENAPI_URL}: ${e instanceof Error ? e.message : e}`,
+			`Could not load the OpenAPI spec from ${OPENAPI_URL}: ${e instanceof Error ? e.message : String(e)}`,
 		);
 	}
 	buildNav();

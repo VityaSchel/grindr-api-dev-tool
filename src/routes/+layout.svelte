@@ -1,20 +1,21 @@
 <script lang="ts">
 	import "./layout.css";
-	import { onMount, untrack } from "svelte";
-	import { page } from "$app/state";
-	import { goto, afterNavigate } from "$app/navigation";
-	import { resolve } from "$app/paths";
 	import { listen } from "@tauri-apps/api/event";
-	import * as Resizable from "$lib/components/ui/resizable";
-	import AppSidebar from "$lib/components/AppSidebar.svelte";
-	import Navbar from "$lib/components/Navbar.svelte";
-	import TabBar from "$lib/components/grindr-api/TabBar.svelte";
-	import EndpointView from "$lib/components/grindr-api/EndpointView.svelte";
-	import CustomRequest from "$lib/components/grindr-api/CustomRequest.svelte";
+	import { afterNavigate, goto } from "$app/navigation";
+	import { resolve } from "$app/paths";
+	import { page } from "$app/state";
+	import { onMount, untrack } from "svelte";
+
 	import { accounts } from "$lib/accounts.svelte";
-	import { tabs, tabKey } from "$lib/tabs.svelte";
-	import { grindrApiHref, METHOD_PARAM, CUSTOM_TAB_PATH } from "$lib/links";
+	import AppSidebar from "$lib/components/AppSidebar.svelte";
+	import CustomRequest from "$lib/components/grindr-api/CustomRequest.svelte";
+	import EndpointView from "$lib/components/grindr-api/EndpointView.svelte";
+	import TabBar from "$lib/components/grindr-api/TabBar.svelte";
+	import Navbar from "$lib/components/Navbar.svelte";
+	import * as Resizable from "$lib/components/ui/resizable";
+	import { CUSTOM_TAB_PATH, grindrApiHref, METHOD_PARAM } from "$lib/links";
 	import { getOperations } from "$lib/openapi";
+	import { tabKey, tabs } from "$lib/tabs.svelte";
 
 	const { children } = $props();
 
@@ -121,7 +122,11 @@
 </script>
 
 <Resizable.PaneGroup direction="horizontal" class="h-dvh!">
-	<Resizable.Pane defaultSize={20} maxSize={60} class="flex min-w-60 flex-col">
+	<Resizable.Pane
+		defaultSize={20}
+		maxSize={60}
+		class="flex min-w-60 flex-col"
+	>
 		<AppSidebar />
 	</Resizable.Pane>
 	<Resizable.Handle
@@ -137,7 +142,7 @@
 				<div
 					data-tab-panel
 					data-active={isActive}
-					class={["min-h-0 flex-1", !isActive && "hidden"]}
+					class={["min-h-0 flex-1", { hidden: !isActive }]}
 				>
 					{#if tab.path === CUSTOM_TAB_PATH}
 						<CustomRequest />

@@ -2,6 +2,7 @@ import { spawnSync } from "node:child_process";
 import { copyFileSync, existsSync, mkdirSync, rmSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
+
 import {
 	bundleDirs,
 	DIST,
@@ -15,7 +16,9 @@ const untilde = (file: string) => file.replace(/^~/, homedir());
 
 function requireMinisign(): void {
 	if (spawnSync("minisign", ["-v"], { stdio: "ignore" }).error) {
-		throw new Error("minisign not found — install it (brew install minisign)");
+		throw new Error(
+			"minisign not found — install it (brew install minisign)",
+		);
 	}
 }
 
@@ -23,7 +26,9 @@ function collect(): string[] {
 	const manifest = readManifest();
 	const sources = bundleDirs().flatMap((dir) => findArtifacts(dir));
 	if (!sources.length) {
-		throw new Error(`no artifacts under ${DIST} — run 'bun run bundle' first`);
+		throw new Error(
+			`no artifacts under ${DIST} — run 'bun run bundle' first`,
+		);
 	}
 
 	rmSync(RELEASE_DIR, { recursive: true, force: true });
@@ -38,7 +43,9 @@ function collect(): string[] {
 		}
 		const destination = path.join(RELEASE_DIR, target);
 		if (existsSync(destination)) {
-			throw new Error(`two artifacts map to ${target}, refusing to overwrite`);
+			throw new Error(
+				`two artifacts map to ${target}, refusing to overwrite`,
+			);
 		}
 		copyFileSync(source, destination);
 		collected.push(destination);
@@ -77,7 +84,9 @@ function verify(files: string[]): boolean {
 			stdio: ["inherit", "ignore", "inherit"],
 		});
 		if (status !== 0) {
-			throw new Error(`signature does not verify: ${path.basename(file)}`);
+			throw new Error(
+				`signature does not verify: ${path.basename(file)}`,
+			);
 		}
 	}
 	return true;

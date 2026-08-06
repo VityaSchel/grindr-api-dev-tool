@@ -1,14 +1,14 @@
 <script lang="ts">
-	import * as Dialog from "$lib/components/ui/dialog";
-	import * as Accordion from "$lib/components/ui/accordion";
-	import { Input } from "$lib/components/ui/input";
-	import { Label } from "$lib/components/ui/label";
-	import { Button } from "$lib/components/ui/button";
 	import { accounts } from "$lib/accounts.svelte";
 	import { api, type DeviceInfo } from "$lib/api";
+	import * as Accordion from "$lib/components/ui/accordion";
+	import { Button } from "$lib/components/ui/button";
+	import * as Dialog from "$lib/components/ui/dialog";
+	import { Input } from "$lib/components/ui/input";
+	import { Label } from "$lib/components/ui/label";
 	import DeviceFields from "./DeviceFields.svelte";
-	import SignInMethodTabs from "./SignInMethodTabs.svelte";
 	import { emptySignInForm, toCredentials } from "./sign-in";
+	import SignInMethodTabs from "./SignInMethodTabs.svelte";
 
 	let { open = $bindable(false) }: { open?: boolean } = $props();
 
@@ -58,7 +58,9 @@
 		if (creds.method !== "google") {
 			const normalizedEmail = creds.email.toLowerCase();
 			if (
-				accounts.accounts.some((a) => a.email.toLowerCase() === normalizedEmail)
+				accounts.accounts.some(
+					(a) => a.email.toLowerCase() === normalizedEmail,
+				)
 			) {
 				error = "This account is already added.";
 				return;
@@ -105,7 +107,10 @@
 					<Accordion.Trigger>Advanced</Accordion.Trigger>
 					<Accordion.Content class="flex flex-col gap-4">
 						<div class="flex flex-col gap-1.5">
-							<Label for="add-geohash" class="text-xs font-medium">
+							<Label
+								for="add-geohash"
+								class="text-xs font-medium"
+							>
 								Geohash
 							</Label>
 							<Input
@@ -116,7 +121,8 @@
 								autocomplete="off"
 							/>
 							<p class="text-xs text-muted-foreground">
-								Sent only with the sign-in request. Leave empty to omit.
+								Sent only with the sign-in request. Leave empty
+								to omit.
 							</p>
 						</div>
 

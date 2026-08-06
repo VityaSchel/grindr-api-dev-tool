@@ -1,18 +1,18 @@
 <script lang="ts">
-	import { grindrApiHref } from "$lib/links";
-	import type { Operation } from "$lib/openapi";
-	import { getParamGroupsForTag } from "$lib/openapi";
-	import { METHOD_COLORS } from "$lib/methods";
+	import AuthRequiredBadge from "$lib/components/AuthRequiredBadge.svelte";
+	import DeprecatedBadge from "$lib/components/DeprecatedBadge.svelte";
+	import IdempotentBadge from "$lib/components/IdempotentBadge.svelte";
+	import LegacyBadge from "$lib/components/LegacyBadge.svelte";
 	import Markdown from "$lib/components/Markdown.svelte";
+	import WIPBadge from "$lib/components/WIPBadge.svelte";
+	import { grindrApiHref } from "$lib/links";
+	import { METHOD_COLORS } from "$lib/methods";
+	import { getParamGroupsForTag } from "$lib/openapi";
+	import type { Operation } from "$lib/openapi";
+	import ErrorsTable from "./ErrorsTable.svelte";
 	import ParamTable from "./ParamTable.svelte";
 	import ResponsesTable from "./ResponsesTable.svelte";
-	import ErrorsTable from "./ErrorsTable.svelte";
 	import SchemaLink from "./SchemaLink.svelte";
-	import IdempotentBadge from "$lib/components/IdempotentBadge.svelte";
-	import DeprecatedBadge from "$lib/components/DeprecatedBadge.svelte";
-	import AuthRequiredBadge from "$lib/components/AuthRequiredBadge.svelte";
-	import LegacyBadge from "$lib/components/LegacyBadge.svelte";
-	import WIPBadge from "$lib/components/WIPBadge.svelte";
 
 	// `currentPage` = this operation belongs to the page you're already on (the endpoint
 	// page itself), so its path is shown as plain text rather than a self-link. On tag
@@ -41,10 +41,7 @@
 				getParamGroupsForTag(tag).map((g) => ({ ...g, tag })),
 			);
 			const found = allGroups.find((g) => g.name === groupName);
-			return {
-				name: groupName,
-				tag: found?.tag ?? op.tags[0],
-			};
+			return { name: groupName, tag: found?.tag ?? op.tags[0] };
 		}),
 	);
 
@@ -88,11 +85,10 @@
 	<div class="mb-3 flex flex-wrap items-center gap-2">
 		<span
 			class="rounded px-2.5 py-1 font-mono text-sm font-bold"
-			style="color: {METHOD_COLORS[
+			style:color={METHOD_COLORS[op.method]}
+			style:background-color="color-mix(in oklch, {METHOD_COLORS[
 				op.method
-			]}; background-color: color-mix(in oklch, {METHOD_COLORS[
-				op.method
-			]} 15%, transparent);"
+			]} 15%, transparent)"
 		>
 			{op.method.toUpperCase()}
 		</span>
@@ -159,7 +155,9 @@
 					href={seeAlsoHref(ref)}
 					class="font-mono text-xs text-blue-500 hover:underline dark:text-blue-400"
 					>{ref.replace(/^\/grindr-api\//, "")}</a
-				>{#if j < (op["x-see-also"]?.length ?? 0) - 1}<span>, </span>{/if}
+				>{#if j < (op["x-see-also"]?.length ?? 0) - 1}<span
+						>,
+					</span>{/if}
 			{/each}
 		</div>
 	{/if}
@@ -196,7 +194,8 @@
 			<h3 class="mb-2 text-sm font-semibold">
 				Request Body
 				{#if op.requestBody.required}
-					<span class="ml-2 text-xs font-normal text-destructive">required</span
+					<span class="ml-2 text-xs font-normal text-destructive"
+						>required</span
 					>
 				{/if}
 			</h3>

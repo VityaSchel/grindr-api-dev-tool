@@ -1,4 +1,5 @@
 import { open } from "@tauri-apps/plugin-dialog";
+
 import { api, type BodyFile } from "./api";
 import {
 	binaryBodyContentType,
@@ -86,7 +87,7 @@ export class RequestBodyModel {
 			this.error = null;
 			this.view = "form";
 		} catch (e) {
-			this.error = `Cannot switch to form — invalid JSON: ${e}`;
+			this.error = `Cannot switch to form — invalid JSON: ${String(e)}`;
 		}
 	}
 

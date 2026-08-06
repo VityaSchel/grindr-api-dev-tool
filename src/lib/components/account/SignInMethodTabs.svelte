@@ -1,10 +1,11 @@
 <script lang="ts">
-	import * as Tabs from "$lib/components/ui/tabs";
+	import { openUrl } from "@tauri-apps/plugin-opener";
+	import { resolve } from "$app/paths";
+	import ArrowSquareOutIcon from "phosphor-svelte/lib/ArrowSquareOutIcon";
+
 	import { Input } from "$lib/components/ui/input";
 	import { Label } from "$lib/components/ui/label";
-	import { resolve } from "$app/paths";
-	import { openUrl } from "@tauri-apps/plugin-opener";
-	import ArrowSquareOutIcon from "phosphor-svelte/lib/ArrowSquareOutIcon";
+	import * as Tabs from "$lib/components/ui/tabs";
 	import type { SignInForm } from "./sign-in";
 
 	const GOOGLE_OAUTH_EXTENSION_URL =
@@ -80,8 +81,8 @@
 			/>
 		</div>
 		<p class="text-xs text-muted-foreground select-text">
-			A shortcut for the same <code>/v8/sessions</code> request — the auth token is
-			fetched for you.
+			A shortcut for the same <code>/v8/sessions</code> request — the auth token
+			is fetched for you.
 		</p>
 	</Tabs.Content>
 
@@ -100,7 +101,9 @@
 			type="button"
 			class="flex w-fit items-center gap-1 font-mono text-xs text-blue-500 hover:underline dark:text-blue-400"
 			onclick={() =>
-				openUrl(GOOGLE_OAUTH_EXTENSION_URL).catch((e) => onError(String(e)))}
+				openUrl(GOOGLE_OAUTH_EXTENSION_URL).catch((e) =>
+					onError(String(e)),
+				)}
 		>
 			<ArrowSquareOutIcon />
 			Get a token with the browser extension

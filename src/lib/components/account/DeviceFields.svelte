@@ -1,10 +1,11 @@
 <script lang="ts">
-	import { Label } from "$lib/components/ui/label";
-	import { Input } from "$lib/components/ui/input";
-	import { Button } from "$lib/components/ui/button";
-	import { Skeleton } from "$lib/components/ui/skeleton";
-	import { DEVICE_FIELD_LABELS, type DeviceInfo } from "$lib/api";
 	import ArrowsClockwiseIcon from "phosphor-svelte/lib/ArrowsClockwiseIcon";
+
+	import { DEVICE_FIELD_LABELS, type DeviceInfo } from "$lib/api";
+	import { Button } from "$lib/components/ui/button";
+	import { Input } from "$lib/components/ui/input";
+	import { Label } from "$lib/components/ui/label";
+	import { Skeleton } from "$lib/components/ui/skeleton";
 
 	let {
 		device = $bindable(),
@@ -34,7 +35,7 @@
 		device = {
 			...device,
 			[key]: key === "device_type" ? clampU8(value) : value,
-		} as DeviceInfo;
+		};
 	}
 </script>
 
@@ -65,14 +66,16 @@
 							id="{uid}-{key}"
 							class="h-7 font-mono text-xs"
 							bind:value={deviceTypeText}
-							oninput={(e) => setField(key, e.currentTarget.value)}
+							oninput={(e) =>
+								setField(key, e.currentTarget.value)}
 						/>
 					{:else}
 						<Input
 							id="{uid}-{key}"
 							class="h-7 font-mono text-xs"
 							value={String(device[key])}
-							oninput={(e) => setField(key, e.currentTarget.value)}
+							oninput={(e) =>
+								setField(key, e.currentTarget.value)}
 						/>
 					{/if}
 				{:else}

@@ -1,14 +1,14 @@
 <script lang="ts">
-	import { grindrApiHref } from "$lib/links";
-	import * as Sidebar from "$lib/components/ui/sidebar";
-	import { Input } from "$lib/components/ui/input";
 	import {
-		navEntries,
-		toTitle,
 		type NavEndpoint,
+		navEntries,
 		type NavEntry,
+		toTitle,
 	} from "$lib/components/sidebar";
 	import SidebarLink from "$lib/components/SidebarLink.svelte";
+	import { Input } from "$lib/components/ui/input";
+	import * as Sidebar from "$lib/components/ui/sidebar";
+	import { grindrApiHref } from "$lib/links";
 
 	let filter = $state("");
 
@@ -82,12 +82,16 @@
 						{#snippet child({ props })}
 							<SidebarLink
 								href={grindrApiHref(
-									entry.kind === "standalone" ? entry.title : entry.label,
+									entry.kind === "standalone"
+										? entry.title
+										: entry.label,
 								)}
 								{...props}
 							>
 								{toTitle(
-									entry.kind === "standalone" ? entry.title : entry.label,
+									entry.kind === "standalone"
+										? entry.title
+										: entry.label,
 								)}
 							</SidebarLink>
 						{/snippet}
@@ -103,7 +107,9 @@
 									<Sidebar.MenuSubButton class="font-medium">
 										{#snippet child({ props })}
 											<SidebarLink
-												href={grindrApiHref(subGroup.tagName)}
+												href={grindrApiHref(
+													subGroup.tagName,
+												)}
 												{...props}
 											>
 												{toTitle(subGroup.title)}

@@ -1,9 +1,11 @@
 <script lang="ts">
-	import { Button, type ButtonProps } from "$lib/components/ui/button";
-	import CopyIcon from "phosphor-svelte/lib/CopyIcon";
 	import CheckIcon from "phosphor-svelte/lib/CheckIcon";
+	import CopyIcon from "phosphor-svelte/lib/CopyIcon";
 
-	let { value, children, ...rest }: ButtonProps & { value: string } = $props();
+	import { Button, type ButtonProps } from "$lib/components/ui/button";
+
+	let { value, children, ...rest }: ButtonProps & { value: string } =
+		$props();
 
 	let copied = $state(false);
 	let timer: ReturnType<typeof setTimeout> | undefined;

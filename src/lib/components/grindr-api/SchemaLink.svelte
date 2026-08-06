@@ -13,7 +13,8 @@
 	};
 
 	function getLinkInfo(s: SchemaObject | undefined, depth = 0): LinkInfo {
-		if (!s) return { label: "", tag: undefined, name: undefined, suffix: "" };
+		if (!s)
+			return { label: "", tag: undefined, name: undefined, suffix: "" };
 		if (s.$ref) {
 			const name = s.$ref.replace("#/components/schemas/", "");
 			const tag = schemaPageTag(name);

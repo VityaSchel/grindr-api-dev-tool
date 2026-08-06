@@ -1,4 +1,4 @@
-import { clsx, type ClassValue } from "clsx";
+import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 
 export function cn(...inputs: ClassValue[]) {
@@ -51,4 +51,21 @@ export function formatFileSize(bytes: number): string {
 	if (bytes < 1024) return `${bytes} B`;
 	if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
 	return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+/**
+ * Renders an unknown value as text. Arrays keep the comma-joined form OpenAPI's
+ * `simple` style expects; objects become JSON rather than "[object Object]".
+ */
+export function stringifyValue(value: unknown): string {
+	if (value === null || value === undefined) return "";
+	if (typeof value === "string") return value;
+	if (Array.isArray(value)) return value.map(stringifyValue).join(",");
+	if (
+		typeof value === "number" ||
+		typeof value === "boolean" ||
+		typeof value === "bigint"
+	)
+		return String(value);
+	return JSON.stringify(value);
 }

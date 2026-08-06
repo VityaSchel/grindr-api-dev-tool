@@ -1,7 +1,8 @@
 <script>
+	import ArrowsClockwiseIcon from "phosphor-svelte/lib/ArrowClockwiseIcon";
+
 	import { Badge } from "$lib/components/ui/badge";
 	import * as Tooltip from "$lib/components/ui/tooltip";
-	import ArrowsClockwiseIcon from "phosphor-svelte/lib/ArrowClockwiseIcon";
 </script>
 
 <Tooltip.Provider>

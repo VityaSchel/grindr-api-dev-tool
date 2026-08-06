@@ -1,19 +1,20 @@
 <script lang="ts">
-	import * as Dialog from "$lib/components/ui/dialog";
-	import { Button } from "$lib/components/ui/button";
-	import { Label } from "$lib/components/ui/label";
-	import { Skeleton } from "$lib/components/ui/skeleton";
-	import CopyButton from "$lib/components/CopyButton.svelte";
-	import DeviceFields from "./DeviceFields.svelte";
+	import EyeIcon from "phosphor-svelte/lib/EyeIcon";
+	import EyeSlashIcon from "phosphor-svelte/lib/EyeSlashIcon";
+
 	import {
-		api,
 		type AccountInfo,
+		api,
 		type DeviceInfo,
 		type Session,
 		type SessionRestriction,
 	} from "$lib/api";
-	import EyeIcon from "phosphor-svelte/lib/EyeIcon";
-	import EyeSlashIcon from "phosphor-svelte/lib/EyeSlashIcon";
+	import CopyButton from "$lib/components/CopyButton.svelte";
+	import { Button } from "$lib/components/ui/button";
+	import * as Dialog from "$lib/components/ui/dialog";
+	import { Label } from "$lib/components/ui/label";
+	import { Skeleton } from "$lib/components/ui/skeleton";
+	import DeviceFields from "./DeviceFields.svelte";
 
 	let {
 		open = $bindable(false),
@@ -84,7 +85,11 @@
 	const rows = $derived(
 		session
 			? [
-					{ label: "Profile ID", value: session.profile_id, secret: false },
+					{
+						label: "Profile ID",
+						value: session.profile_id,
+						secret: false,
+					},
 					{ label: "Email", value: session.email, secret: false },
 					{ label: "Sign-in", value: session.kind, secret: false },
 					{
@@ -101,8 +106,16 @@
 								},
 							]
 						: []),
-					{ label: "Session ID", value: session.session_id, secret: true },
-					{ label: "Auth token", value: session.auth_token, secret: true },
+					{
+						label: "Session ID",
+						value: session.session_id,
+						secret: true,
+					},
+					{
+						label: "Auth token",
+						value: session.auth_token,
+						secret: true,
+					},
 				]
 			: PLACEHOLDER_ROWS,
 	);
@@ -153,8 +166,12 @@
 						{row.label}
 					</span>
 					{#if session}
-						<span class="min-w-0 flex-1 truncate font-mono text-xs select-text">
-							{row.secret && !revealed ? "••••••••••••" : row.value}
+						<span
+							class="min-w-0 flex-1 truncate font-mono text-xs select-text"
+						>
+							{row.secret && !revealed
+								? "••••••••••••"
+								: row.value}
 						</span>
 						<CopyButton
 							value={row.value}
@@ -186,7 +203,9 @@
 		{/if}
 
 		<Dialog.Footer>
-			<Button variant="ghost" onclick={() => (open = false)}>Cancel</Button>
+			<Button variant="ghost" onclick={() => (open = false)}
+				>Cancel</Button
+			>
 			<Button onclick={save} disabled={saving || !device}>
 				{#if saving}
 					Saving...

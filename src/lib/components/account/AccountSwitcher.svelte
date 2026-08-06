@@ -1,17 +1,18 @@
 <script lang="ts">
-	import * as DropdownMenu from "$lib/components/ui/dropdown-menu";
-	import { Button } from "$lib/components/ui/button";
-	import CopyButton from "$lib/components/CopyButton.svelte";
-	import AddAccountDialog from "./AddAccountDialog.svelte";
-	import EditAccountDialog from "./EditAccountDialog.svelte";
-	import { accounts } from "$lib/accounts.svelte";
-	import type { AccountInfo } from "$lib/api";
-	import UserCircleIcon from "phosphor-svelte/lib/UserCircleIcon";
 	import CaretUpDownIcon from "phosphor-svelte/lib/CaretUpDownIcon";
 	import CheckIcon from "phosphor-svelte/lib/CheckIcon";
 	import PencilSimpleIcon from "phosphor-svelte/lib/PencilSimpleIcon";
-	import XIcon from "phosphor-svelte/lib/XIcon";
 	import PlusIcon from "phosphor-svelte/lib/PlusIcon";
+	import UserCircleIcon from "phosphor-svelte/lib/UserCircleIcon";
+	import XIcon from "phosphor-svelte/lib/XIcon";
+
+	import { accounts } from "$lib/accounts.svelte";
+	import CopyButton from "$lib/components/CopyButton.svelte";
+	import { Button } from "$lib/components/ui/button";
+	import * as DropdownMenu from "$lib/components/ui/dropdown-menu";
+	import type { AccountInfo } from "$lib/api";
+	import AddAccountDialog from "./AddAccountDialog.svelte";
+	import EditAccountDialog from "./EditAccountDialog.svelte";
 
 	let menuOpen = $state(false);
 	let addOpen = $state(false);
@@ -76,8 +77,10 @@
 				>
 					<UserCircleIcon class="size-4" />
 					<span
-						class="max-w-44 truncate"
-						class:text-muted-foreground={!accounts.active}
+						class={[
+							"max-w-44 truncate",
+							{ "text-muted-foreground": !accounts.active },
+						]}
 					>
 						{label}
 					</span>
@@ -99,7 +102,10 @@
 			</DropdownMenu.Item>
 
 			{#each accounts.accounts as account (account.id)}
-				<DropdownMenu.Item class="gap-2" onSelect={() => switchTo(account.id)}>
+				<DropdownMenu.Item
+					class="gap-2"
+					onSelect={() => switchTo(account.id)}
+				>
 					{#if accounts.activeId === account.id}
 						<CheckIcon class="size-4 shrink-0" />
 					{:else}

@@ -1,9 +1,10 @@
 <script lang="ts">
-	import { Button } from "$lib/components/ui/button";
 	import { goto } from "$app/navigation";
-	import { grindrApiHref, CUSTOM_TAB_PATH } from "$lib/links";
-	import AccountSwitcher from "./account/AccountSwitcher.svelte";
 	import PlusIcon from "phosphor-svelte/lib/PlusIcon";
+
+	import { Button } from "$lib/components/ui/button";
+	import { CUSTOM_TAB_PATH, grindrApiHref } from "$lib/links";
+	import AccountSwitcher from "./account/AccountSwitcher.svelte";
 </script>
 
 <header

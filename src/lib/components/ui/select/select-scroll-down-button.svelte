@@ -1,7 +1,8 @@
 <script lang="ts">
 	import { Select as SelectPrimitive } from "bits-ui";
+	import CaretDownIcon from "phosphor-svelte/lib/CaretDown";
+
 	import { cn, type WithoutChildrenOrChild } from "$lib/utils.js";
-	import CaretDownIcon from 'phosphor-svelte/lib/CaretDown';
 
 	let {
 		ref = $bindable(null),
@@ -13,8 +14,11 @@
 <SelectPrimitive.ScrollDownButton
 	bind:ref
 	data-slot="select-scroll-down-button"
-	class={cn("bg-popover z-10 flex cursor-default items-center justify-center py-1 [&_svg:not([class*='size-'])]:size-4 bottom-0 w-full", className)}
+	class={cn(
+		"bottom-0 z-10 flex w-full cursor-default items-center justify-center bg-popover py-1 [&_svg:not([class*='size-'])]:size-4",
+		className,
+	)}
 	{...restProps}
 >
-	<CaretDownIcon  />
+	<CaretDownIcon />
 </SelectPrimitive.ScrollDownButton>

@@ -1,13 +1,13 @@
 <script lang="ts" module>
-	import { type VariantProps, tv } from "tailwind-variants";
+	import { tv, type VariantProps } from "tailwind-variants";
 
 	export const toggleVariants = tv({
-		base: "inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium transition-[color,box-shadow] outline-none hover:bg-muted hover:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-3 disabled:pointer-events-none disabled:opacity-50 data-[state=on]:bg-accent data-[state=on]:text-accent-foreground [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0 whitespace-nowrap",
+		base: "inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium whitespace-nowrap transition-[color,box-shadow] outline-none hover:bg-muted hover:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 data-[state=on]:bg-accent data-[state=on]:text-accent-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
 		variants: {
 			variant: {
 				default: "bg-transparent",
 				outline:
-					"border border-input data-[state=on]:bg-primary shadow-xs hover:bg-accent hover:text-accent-foreground",
+					"border border-input shadow-xs hover:bg-accent hover:text-accent-foreground data-[state=on]:bg-primary",
 			},
 			size: {
 				default: "h-8 min-w-8 px-2",
@@ -15,10 +15,7 @@
 				lg: "h-9 min-w-9 px-2.5",
 			},
 		},
-		defaultVariants: {
-			variant: "default",
-			size: "default",
-		},
+		defaultVariants: { variant: "default", size: "default" },
 	});
 
 	export type ToggleVariant = VariantProps<typeof toggleVariants>["variant"];
@@ -28,6 +25,7 @@
 <script lang="ts">
 	import { Toggle as TogglePrimitive } from "bits-ui";
 	import type { Snippet } from "svelte";
+
 	import { cn, type WithElementRef } from "$lib/utils.js";
 
 	let {

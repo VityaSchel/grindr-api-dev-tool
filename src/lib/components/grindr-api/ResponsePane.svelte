@@ -41,21 +41,25 @@
 		{#if runner.sending}
 			<span class="text-xs text-muted-foreground">Sending...</span>
 		{:else if runner.elapsed !== null}
-			<span class="text-xs text-muted-foreground">{runner.elapsed} ms</span>
+			<span class="text-xs text-muted-foreground"
+				>{runner.elapsed} ms</span
+			>
 		{/if}
 	</div>
 
 	<div
 		class={[
 			"min-h-0 flex-1 px-6 pb-6",
-			parsed ? "flex flex-col" : "overflow-auto",
+			{ "flex flex-col": parsed, "overflow-auto": !parsed },
 		]}
 	>
 		{#if runner.error}
 			<div
 				class="rounded-lg border border-destructive/30 bg-destructive/10 p-3"
 			>
-				<p class="text-sm wrap-break-word text-destructive">{runner.error}</p>
+				<p class="text-sm wrap-break-word text-destructive">
+					{runner.error}
+				</p>
 			</div>
 		{:else if runner.response}
 			{#if runner.response.body.trim() === ""}

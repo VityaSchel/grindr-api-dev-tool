@@ -1,4 +1,5 @@
 import { isTauri } from "@tauri-apps/api/core";
+
 import { api } from "$lib/api";
 
 export const OPENAPI_URL = "https://opengrind.org/openapi.json";
@@ -132,10 +133,7 @@ export type ParameterGroup = {
 	parameters: Array<{ $ref: string } | Param>;
 };
 
-export type TagOperation = {
-	path: string;
-	op: Operation;
-};
+export type TagOperation = { path: string; op: Operation };
 
 // ─── Path operations ─────────────────────────────────────────────────────────
 
@@ -166,7 +164,7 @@ export function getOperations(pathKey: string): Operation[] {
 				method,
 				tags: raw.tags ?? [],
 				parameters: resolveParams(raw),
-			} as Operation,
+			},
 		];
 	});
 }
@@ -187,7 +185,7 @@ export function getOperationsForTag(tagName: string): TagOperation[] {
 					method,
 					tags: raw.tags ?? [],
 					parameters: resolveParams(raw),
-				} as Operation,
+				},
 			});
 		}
 	}
@@ -198,15 +196,15 @@ export function getOperationsForTag(tagName: string): TagOperation[] {
 
 /** Look up a tag definition by name. */
 export function getTag(name: string): Tag | undefined {
-	return (schema.tags as Tag[]).find((t) => t.name === name);
+	return schema.tags.find((t) => t.name === name);
 }
 
 // ─── Schema lookups ───────────────────────────────────────────────────────────
 
 export function getSchema(name: string): SchemaObject | undefined {
-	return (schema.components.schemas as unknown as Record<string, SchemaObject>)[
-		name
-	];
+	return (
+		schema.components.schemas as unknown as Record<string, SchemaObject>
+	)[name];
 }
 
 /** Return the tag page this schema is rendered on (from x-render-on-tag). */

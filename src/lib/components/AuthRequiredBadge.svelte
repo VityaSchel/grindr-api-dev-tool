@@ -1,6 +1,7 @@
 <script>
-	import { Badge } from "$lib/components/ui/badge";
 	import KeyIcon from "phosphor-svelte/lib/KeyIcon";
+
+	import { Badge } from "$lib/components/ui/badge";
 </script>
 
 <Badge

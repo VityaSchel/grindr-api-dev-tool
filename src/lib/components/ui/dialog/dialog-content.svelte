@@ -1,12 +1,13 @@
 <script lang="ts">
 	import { Dialog as DialogPrimitive } from "bits-ui";
-	import type { Snippet } from "svelte";
-	import DialogPortal from "./dialog-portal.svelte";
-	import DialogOverlay from "./dialog-overlay.svelte";
-	import { Button } from "$lib/components/ui/button/index.js";
 	import XIcon from "phosphor-svelte/lib/XIcon";
-	import { cn, type WithoutChildrenOrChild } from "$lib/utils.js";
+	import type { Snippet } from "svelte";
 	import type { ComponentProps } from "svelte";
+
+	import { Button } from "$lib/components/ui/button/index.js";
+	import { cn, type WithoutChildrenOrChild } from "$lib/utils.js";
+	import DialogOverlay from "./dialog-overlay.svelte";
+	import DialogPortal from "./dialog-portal.svelte";
 
 	let {
 		ref = $bindable(null),
@@ -16,7 +17,9 @@
 		children,
 		...restProps
 	}: WithoutChildrenOrChild<DialogPrimitive.ContentProps> & {
-		portalProps?: WithoutChildrenOrChild<ComponentProps<typeof DialogPortal>>;
+		portalProps?: WithoutChildrenOrChild<
+			ComponentProps<typeof DialogPortal>
+		>;
 		showCloseButton?: boolean;
 		children: Snippet;
 	} = $props();

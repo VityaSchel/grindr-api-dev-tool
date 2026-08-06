@@ -1,4 +1,5 @@
 import type { Param, SchemaObject } from "./openapi";
+import { stringifyValue } from "./utils";
 
 function pair(name: string, value: unknown): string {
 	return `${encodeURIComponent(name)}=${encodeURIComponent(String(value))}`;
@@ -20,7 +21,7 @@ export function buildRequestPath(
 	for (const param of pathParams) {
 		path = path.replaceAll(
 			`{${param.name}}`,
-			encodeURIComponent(String(pathModel[param.name] ?? "")),
+			encodeURIComponent(stringifyValue(pathModel[param.name])),
 		);
 	}
 

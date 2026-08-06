@@ -1,18 +1,19 @@
 <script lang="ts">
+	import PaperPlaneTiltIcon from "phosphor-svelte/lib/PaperPlaneTiltIcon";
+	import XIcon from "phosphor-svelte/lib/XIcon";
 	import { onMount } from "svelte";
+
 	import { accounts } from "$lib/accounts.svelte";
 	import { api } from "$lib/api";
+	import { Button } from "$lib/components/ui/button";
+	import { Input } from "$lib/components/ui/input";
+	import * as Select from "$lib/components/ui/select";
+	import { Textarea } from "$lib/components/ui/textarea";
 	import { API_BASE_URL } from "$lib/links";
-	import { SELECTABLE_METHODS, methodColor } from "$lib/methods";
+	import { methodColor, SELECTABLE_METHODS } from "$lib/methods";
 	import { RequestRunner } from "$lib/request.svelte";
 	import RequestShell from "./RequestShell.svelte";
 	import ResponsePane from "./ResponsePane.svelte";
-	import * as Select from "$lib/components/ui/select";
-	import { Input } from "$lib/components/ui/input";
-	import { Textarea } from "$lib/components/ui/textarea";
-	import { Button } from "$lib/components/ui/button";
-	import PaperPlaneTiltIcon from "phosphor-svelte/lib/PaperPlaneTiltIcon";
-	import XIcon from "phosphor-svelte/lib/XIcon";
 
 	const runner = new RequestRunner();
 
@@ -65,7 +66,7 @@
 			try {
 				body = JSON.parse(text);
 			} catch (e) {
-				runner.fail(`Request body is not valid JSON — ${e}`);
+				runner.fail(`Request body is not valid JSON — ${String(e)}`);
 				return;
 			}
 		}
@@ -103,13 +104,15 @@
 			<div>
 				<h1 class="text-xl font-bold">Custom request</h1>
 				<p class="mt-1 text-sm text-muted-foreground">
-					Send any method to any grindr.mobi path. Authentication headers and
-					the session are filled in from the active account
+					Send any method to any grindr.mobi path. Authentication
+					headers and the session are filled in from the active
+					account
 					{#if accounts.active}
-						(<span class="font-medium">{accounts.active.email}</span>).
+						(<span class="font-medium">{accounts.active.email}</span
+						>).
 					{:else}
-						— currently <span class="font-medium">unauthorized</span>, so only
-						no-auth endpoints will work.
+						— currently <span class="font-medium">unauthorized</span
+						>, so only no-auth endpoints will work.
 					{/if}
 				</p>
 			</div>
@@ -172,7 +175,9 @@
 			{/if}
 
 			<div class="flex flex-col gap-2">
-				<span class="text-xs font-semibold tracking-wide uppercase">Body</span>
+				<span class="text-xs font-semibold tracking-wide uppercase"
+					>Body</span
+				>
 				<Textarea
 					value={bodyText}
 					oninput={onBodyInput}
