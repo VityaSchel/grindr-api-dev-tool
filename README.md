@@ -15,4 +15,6 @@ Powered by [grindr.rs](https://git.opengrind.org/open-grind/grindr.rs), made for
 
 ## License
 
-[MIT](./LICENSE)
+Code: [MIT](./LICENSE)
+
+Logo, icons and screenshot (`contrib/`, `src-tauri/icons/`): [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) (public domain). The screenshot also shows [Phosphor Icons](https://phosphoricons.com), Copyright (c) 2020 Phosphor Icons, under the MIT License
