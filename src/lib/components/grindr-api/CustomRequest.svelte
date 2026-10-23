@@ -145,7 +145,7 @@
 				<Input
 					bind:value={url}
 					placeholder="/v3/me/profile"
-					class="flex-1 font-mono text-sm"
+					class="flex-1 font-mono"
 					onkeydown={onUrlKeydown}
 				/>
 

@@ -180,7 +180,7 @@
 					onblur={() => (urlHasFocus = false)}
 					aria-label="Request URL"
 					title={urlText}
-					class="min-w-0 flex-1 font-mono text-sm"
+					class="min-w-0 flex-1 font-mono"
 				/>
 
 				{#if runner.sending}
