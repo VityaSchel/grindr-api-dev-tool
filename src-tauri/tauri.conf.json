@@ -12,6 +12,7 @@
 	"app": {
 		"windows": [
 			{
+				"create": false,
 				"title": "Grindr API developer tool",
 				"width": 1000,
 				"height": 800

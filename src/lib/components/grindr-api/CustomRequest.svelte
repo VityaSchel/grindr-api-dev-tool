@@ -144,7 +144,6 @@
 
 				<Input
 					bind:value={url}
-					spellcheck={false}
 					placeholder="/v3/me/profile"
 					class="flex-1 font-mono text-sm"
 					onkeydown={onUrlKeydown}
@@ -181,7 +180,6 @@
 				<Textarea
 					value={bodyText}
 					oninput={onBodyInput}
-					spellcheck={false}
 					class="min-h-40 font-mono text-xs"
 					placeholder="JSON request body (leave empty for none)"
 				/>

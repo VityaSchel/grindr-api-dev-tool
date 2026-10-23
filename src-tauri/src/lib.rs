@@ -1,4 +1,6 @@
 mod commands;
+#[cfg(target_os = "macos")]
+mod macos;
 mod session;
 mod state;
 mod store;
@@ -7,7 +9,7 @@ use std::collections::HashMap;
 use std::time::Duration;
 
 use grindr::{DeviceInfo, GrindrClient};
-use tauri::Manager;
+use tauri::{Manager, WebviewWindowBuilder};
 use tokio::sync::Mutex;
 
 use crate::commands::{
@@ -22,6 +24,9 @@ use crate::store::load_store;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+	#[cfg(target_os = "macos")]
+	macos::disable_text_assistance();
+
 	tauri::Builder::default()
 		.plugin(tauri_plugin_opener::init())
 		.plugin(tauri_plugin_dialog::init())
@@ -120,6 +125,7 @@ pub fn run() {
 				});
 			}
 
+			build_main_window(app)?;
 			Ok(())
 		})
 		.invoke_handler(tauri::generate_handler![
@@ -139,4 +145,19 @@ pub fn run() {
 		])
 		.run(tauri::generate_context!())
 		.expect("error while running tauri application");
+}
+
+fn build_main_window(app: &tauri::App) -> tauri::Result<()> {
+	let config = app
+		.config()
+		.app
+		.windows
+		.iter()
+		.find(|w| w.label == "main")
+		.expect("tauri.conf.json must declare the main window");
+	let window = WebviewWindowBuilder::from_config(app, config)?;
+	#[cfg(target_os = "macos")]
+	let window = window.with_webview_configuration(macos::webview_configuration());
+	window.build()?;
+	Ok(())
 }

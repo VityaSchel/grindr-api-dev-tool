@@ -517,7 +517,7 @@
 				disabled={disabled || isNull}
 				placeholder={isNull ? "null" : ""}
 				oninput={onNumber}
-				class="flex-1"
+				class="flex-1 font-mono"
 			/>
 		</div>
 	</div>
@@ -533,7 +533,7 @@
 				disabled={disabled || isNull}
 				placeholder={isNull ? "null" : ""}
 				oninput={onString}
-				class="flex-1"
+				class="flex-1 font-mono"
 			/>
 		</div>
 	</div>

@@ -83,7 +83,6 @@
 		>
 		<Input
 			bind:value={body.fileContentType}
-			spellcheck={false}
 			class="font-mono text-xs"
 			placeholder={body.binaryContentType}
 		/>
@@ -114,7 +113,6 @@
 	<Textarea
 		value={body.text}
 		oninput={(e) => body.setText(e.currentTarget.value)}
-		spellcheck={false}
 		class="min-h-48 font-mono text-xs"
 		placeholder={body.jsonSchema
 			? "JSON request body"

@@ -33,3 +33,22 @@ tokio = { version = "1", features = [
 	"time",
 	"fs",
 ] }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = "0.6"
+objc2-app-kit = { version = "0.3", default-features = false, features = [
+	"std",
+	"NSTextCheckingClient",
+] }
+objc2-foundation = { version = "0.3", default-features = false, features = [
+	"std",
+	"NSDictionary",
+	"NSObject",
+	"NSString",
+	"NSUserDefaults",
+	"NSValue",
+] }
+objc2-web-kit = { version = "0.3", default-features = false, features = [
+	"std",
+	"WKWebViewConfiguration",
+] }

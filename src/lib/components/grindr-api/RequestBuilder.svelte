@@ -178,7 +178,6 @@
 					oninput={syncModelsFromUrl}
 					onfocus={() => (urlHasFocus = true)}
 					onblur={() => (urlHasFocus = false)}
-					spellcheck={false}
 					aria-label="Request URL"
 					title={urlText}
 					class="min-w-0 flex-1 font-mono text-sm"

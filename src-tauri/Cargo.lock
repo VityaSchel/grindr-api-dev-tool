@@ -1659,6 +1659,10 @@ name = "grindr-api-dev-tool"
 version = "1.2.0"
 dependencies = [
  "grindr",
+ "objc2",
+ "objc2-app-kit",
+ "objc2-foundation",
+ "objc2-web-kit",
  "serde",
  "serde_json",
  "tauri",
