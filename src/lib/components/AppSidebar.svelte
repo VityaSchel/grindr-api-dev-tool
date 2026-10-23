@@ -15,26 +15,20 @@
 	const filteredEntries = $derived.by(() => {
 		const q = filter.trim().toLowerCase();
 		if (!q) return navEntries;
+		const includesQuery = (text: string) => text.toLowerCase().includes(q);
 		const matches = (item: NavEndpoint) =>
-			item.title.toLowerCase().includes(q) ||
-			item.url.toLowerCase().includes(q);
+			includesQuery(item.title) || includesQuery(item.url);
 		return navEntries.flatMap<NavEntry>((entry) => {
-			if (entry.kind === "standalone") {
-				if (entry.title.toLowerCase().includes(q)) return [entry];
-				const items = entry.items.filter(matches);
-				return items.length ? [{ ...entry, items }] : [];
-			} else {
-				if (entry.label.toLowerCase().includes(q)) return [entry];
-				const items = entry.items.filter(matches);
-				const subGroups = entry.subGroups.flatMap((sg) => {
-					if (sg.title.toLowerCase().includes(q)) return [sg];
-					const sgItems = sg.items.filter(matches);
-					return sgItems.length ? [{ ...sg, items: sgItems }] : [];
-				});
-				return items.length || subGroups.length
-					? [{ ...entry, items, subGroups }]
-					: [];
-			}
+			if (includesQuery(entry.title)) return [entry];
+			const items = entry.items.filter(matches);
+			const subGroups = entry.subGroups.flatMap((sg) => {
+				if (includesQuery(sg.title)) return [sg];
+				const sgItems = sg.items.filter(matches);
+				return sgItems.length ? [{ ...sg, items: sgItems }] : [];
+			});
+			return items.length || subGroups.length
+				? [{ ...entry, items, subGroups }]
+				: [];
 		});
 	});
 </script>
@@ -72,36 +66,24 @@
 	/>
 </Sidebar.Header>
 <Sidebar.Content class="h-full min-h-0 flex-1 shrink scrollbar-auto ">
-	{#each filteredEntries as entry (entry.kind === "standalone" ? entry.title : entry.label)}
+	{#each filteredEntries as entry (entry.title)}
 		<Sidebar.Group>
 			<Sidebar.Menu>
 				<Sidebar.MenuItem>
 					<Sidebar.MenuButton class="font-medium">
 						{#snippet child({ props })}
 							<SidebarLink
-								href={grindrApiHref(
-									entry.kind === "standalone"
-										? entry.title
-										: entry.label,
-								)}
+								href={grindrApiHref(entry.title)}
 								{...props}
 							>
-								{toTitle(
-									entry.kind === "standalone"
-										? entry.title
-										: entry.label,
-								)}
+								{toTitle(entry.title)}
 							</SidebarLink>
 						{/snippet}
 					</Sidebar.MenuButton>
-					{#if entry.kind === "standalone"}
-						{#if entry.items.length}
-							{@render endpointList(entry.items)}
-						{/if}
-					{:else}
-						{#if entry.items.length}
-							{@render endpointList(entry.items)}
-						{/if}
+					{#if entry.items.length}
+						{@render endpointList(entry.items)}
+					{/if}
+					{#if entry.subGroups.length}
 						<Sidebar.MenuSub>
 							{#each entry.subGroups as subGroup (subGroup.title)}
 								<Sidebar.MenuSubItem>

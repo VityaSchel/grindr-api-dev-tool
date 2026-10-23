@@ -16,14 +16,11 @@ export type NavSubGroup = {
 	tagName: string;
 	items: NavEndpoint[];
 };
-export type NavEntry =
-	| { kind: "standalone"; title: string; items: NavEndpoint[] }
-	| {
-			kind: "grouped";
-			label: string;
-			items: NavEndpoint[];
-			subGroups: NavSubGroup[];
-	  };
+export type NavEntry = {
+	title: string;
+	items: NavEndpoint[];
+	subGroups: NavSubGroup[];
+};
 
 type Operation = { summary?: string; tags?: string[] };
 type PathItem = Partial<Record<(typeof HTTP_METHODS)[number], Operation>>;
@@ -54,40 +51,28 @@ export function buildNav(): void {
 	const entries = (
 		schema["x-sidebar-order"] as SidebarOrderItem[]
 	).flatMap<NavEntry>((entry) => {
-		if (typeof entry === "string") {
-			const items = tagEndpoints[entry];
-			if (!items?.length) return [];
-			return [{ kind: "standalone" as const, title: entry, items }];
-		}
-		const subGroups = entry.items.flatMap((tag) => {
+		const { group, items: subGroupTags } =
+			typeof entry === "string" ? { group: entry, items: [] } : entry;
+		const subGroups = subGroupTags.flatMap((tag) => {
 			const slashIdx = tag.indexOf("/");
 			const suffix = slashIdx !== -1 ? tag.slice(slashIdx + 1) : tag;
 			const items = tagEndpoints[tag];
 			if (!items?.length) return [];
 			return [{ title: suffix, tagName: tag, items }];
 		});
-		// The group name is a tag in its own right; anything left on it hangs directly
-		// off the group header, which already links there.
-		const items = tagEndpoints[entry.group] ?? [];
+		const items = tagEndpoints[group] ?? [];
 		if (!subGroups.length && !items.length) return [];
-		return [
-			{ kind: "grouped" as const, label: entry.group, items, subGroups },
-		];
+		return [{ title: group, items, subGroups }];
 	});
 	navEntries.length = 0;
 	navEntries.push(...entries);
 
 	for (const entry of navEntries) {
-		if (entry.kind === "standalone") {
-			navTitleByPath[entry.title] = toTitle(entry.title);
-			for (const it of entry.items) addEndpoint(it);
-		} else {
-			navTitleByPath[entry.label] = toTitle(entry.label);
-			for (const it of entry.items) addEndpoint(it);
-			for (const sg of entry.subGroups) {
-				navTitleByPath[sg.tagName] = toTitle(sg.title);
-				for (const it of sg.items) addEndpoint(it);
-			}
+		navTitleByPath[entry.title] = toTitle(entry.title);
+		for (const it of entry.items) addEndpoint(it);
+		for (const sg of entry.subGroups) {
+			navTitleByPath[sg.tagName] = toTitle(sg.title);
+			for (const it of sg.items) addEndpoint(it);
 		}
 	}
 }
