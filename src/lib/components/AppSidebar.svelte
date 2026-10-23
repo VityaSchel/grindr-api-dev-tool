@@ -15,27 +15,25 @@
 	const filteredEntries = $derived.by(() => {
 		const q = filter.trim().toLowerCase();
 		if (!q) return navEntries;
+		const matches = (item: NavEndpoint) =>
+			item.title.toLowerCase().includes(q) ||
+			item.url.toLowerCase().includes(q);
 		return navEntries.flatMap<NavEntry>((entry) => {
 			if (entry.kind === "standalone") {
 				if (entry.title.toLowerCase().includes(q)) return [entry];
-				const items = entry.items.filter(
-					(item) =>
-						item.title.toLowerCase().includes(q) ||
-						item.url.toLowerCase().includes(q),
-				);
+				const items = entry.items.filter(matches);
 				return items.length ? [{ ...entry, items }] : [];
 			} else {
 				if (entry.label.toLowerCase().includes(q)) return [entry];
+				const items = entry.items.filter(matches);
 				const subGroups = entry.subGroups.flatMap((sg) => {
 					if (sg.title.toLowerCase().includes(q)) return [sg];
-					const items = sg.items.filter(
-						(item) =>
-							item.title.toLowerCase().includes(q) ||
-							item.url.toLowerCase().includes(q),
-					);
-					return items.length ? [{ ...sg, items }] : [];
+					const sgItems = sg.items.filter(matches);
+					return sgItems.length ? [{ ...sg, items: sgItems }] : [];
 				});
-				return subGroups.length ? [{ ...entry, subGroups }] : [];
+				return items.length || subGroups.length
+					? [{ ...entry, items, subGroups }]
+					: [];
 			}
 		});
 	});
@@ -101,6 +99,9 @@
 							{@render endpointList(entry.items)}
 						{/if}
 					{:else}
+						{#if entry.items.length}
+							{@render endpointList(entry.items)}
+						{/if}
 						<Sidebar.MenuSub>
 							{#each entry.subGroups as subGroup (subGroup.title)}
 								<Sidebar.MenuSubItem>

@@ -18,7 +18,12 @@ export type NavSubGroup = {
 };
 export type NavEntry =
 	| { kind: "standalone"; title: string; items: NavEndpoint[] }
-	| { kind: "grouped"; label: string; subGroups: NavSubGroup[] };
+	| {
+			kind: "grouped";
+			label: string;
+			items: NavEndpoint[];
+			subGroups: NavSubGroup[];
+	  };
 
 type Operation = { summary?: string; tags?: string[] };
 type PathItem = Partial<Record<(typeof HTTP_METHODS)[number], Operation>>;
@@ -61,8 +66,13 @@ export function buildNav(): void {
 			if (!items?.length) return [];
 			return [{ title: suffix, tagName: tag, items }];
 		});
-		if (!subGroups.length) return [];
-		return [{ kind: "grouped" as const, label: entry.group, subGroups }];
+		// The group name is a tag in its own right; anything left on it hangs directly
+		// off the group header, which already links there.
+		const items = tagEndpoints[entry.group] ?? [];
+		if (!subGroups.length && !items.length) return [];
+		return [
+			{ kind: "grouped" as const, label: entry.group, items, subGroups },
+		];
 	});
 	navEntries.length = 0;
 	navEntries.push(...entries);
@@ -73,6 +83,7 @@ export function buildNav(): void {
 			for (const it of entry.items) addEndpoint(it);
 		} else {
 			navTitleByPath[entry.label] = toTitle(entry.label);
+			for (const it of entry.items) addEndpoint(it);
 			for (const sg of entry.subGroups) {
 				navTitleByPath[sg.tagName] = toTitle(sg.title);
 				for (const it of sg.items) addEndpoint(it);
