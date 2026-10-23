@@ -155,9 +155,10 @@ fn build_main_window(app: &tauri::App) -> tauri::Result<()> {
 		.iter()
 		.find(|w| w.label == "main")
 		.expect("tauri.conf.json must declare the main window");
-	let window = WebviewWindowBuilder::from_config(app, config)?;
+	let builder = WebviewWindowBuilder::from_config(app, config)?;
 	#[cfg(target_os = "macos")]
-	let window = window.with_webview_configuration(macos::webview_configuration());
-	window.build()?;
+	let builder =
+		builder.with_webview_configuration(macos::webview_configuration());
+	builder.build()?;
 	Ok(())
 }

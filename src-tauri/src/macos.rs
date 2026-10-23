@@ -7,7 +7,7 @@ use objc2_foundation::{
 };
 use objc2_web_kit::WKWebViewConfiguration;
 
-pub fn disable_text_assistance() {
+pub(crate) fn disable_text_assistance() {
 	let keys = [
 		ns_string!("WebAutomaticQuoteSubstitutionEnabled"),
 		ns_string!("WebAutomaticDashSubstitutionEnabled"),
@@ -29,7 +29,7 @@ pub fn disable_text_assistance() {
 	};
 }
 
-pub fn webview_configuration() -> Retained<WKWebViewConfiguration> {
+pub(crate) fn webview_configuration() -> Retained<WKWebViewConfiguration> {
 	let mtm = MainThreadMarker::new().expect("must run on the main thread");
 	let config = unsafe { WKWebViewConfiguration::new(mtm) };
 	if config.respondsToSelector(sel!(setWritingToolsBehavior:)) {
