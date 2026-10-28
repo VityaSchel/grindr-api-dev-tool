@@ -23,10 +23,11 @@
 </script>
 
 <Tabs.Root bind:value={form.method}>
-	<Tabs.List class="grid w-full grid-cols-3">
+	<Tabs.List class="grid w-full grid-cols-4">
 		<Tabs.Trigger value="token">Token</Tabs.Trigger>
 		<Tabs.Trigger value="password">Password</Tabs.Trigger>
 		<Tabs.Trigger value="google">Google</Tabs.Trigger>
+		<Tabs.Trigger value="facebook">Facebook</Tabs.Trigger>
 	</Tabs.List>
 
 	<Tabs.Content value="token" class="flex flex-col gap-4 pt-2">
@@ -80,9 +81,22 @@
 				autocomplete="off"
 			/>
 		</div>
+		<div class="flex flex-col gap-1.5">
+			<Label for="add-captcha-token">reCAPTCHA token (optional)</Label>
+			<Input
+				id="add-captcha-token"
+				type="password"
+				bind:value={form.captchaToken}
+				placeholder="reCAPTCHA Enterprise token"
+				autocomplete="off"
+			/>
+		</div>
 		<p class="text-xs text-muted-foreground select-text">
-			A shortcut for the same <code>/v8/sessions</code> request — the auth token
-			is fetched for you.
+			A shortcut for the same <code
+				>{form.captchaToken.trim()
+					? "/v9/sessions"
+					: "/v8/sessions"}</code
+			> request — the auth token is fetched for you.
 		</p>
 	</Tabs.Content>
 
@@ -108,5 +122,18 @@
 			<ArrowSquareOutIcon />
 			Get a token with the browser extension
 		</button>
+	</Tabs.Content>
+
+	<Tabs.Content value="facebook" class="flex flex-col gap-4 pt-2">
+		<div class="flex flex-col gap-1.5">
+			<Label for="add-facebook-token">Facebook access token</Label>
+			<Input
+				id="add-facebook-token"
+				type="password"
+				bind:value={form.facebookToken}
+				placeholder="EAA..."
+				autocomplete="off"
+			/>
+		</div>
 	</Tabs.Content>
 </Tabs.Root>

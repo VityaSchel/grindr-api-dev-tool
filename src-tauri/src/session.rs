@@ -11,12 +11,20 @@ pub(crate) fn spawn_persist_watch(
 ) {
 	tauri::async_runtime::spawn(async move {
 		while rx.changed().await.is_ok() {
-			let session = rx.borrow().clone();
-			let Some(session) = session else { continue };
+			let credentials = rx
+				.borrow()
+				.as_ref()
+				.map(|session| session.credentials.clone());
+			let Some(credentials) = credentials else {
+				continue;
+			};
 			let state = app.state::<AppState>();
 			let mut store = state.store.lock().await;
 			if let Some(acc) = store.accounts.iter_mut().find(|a| a.id == id) {
-				acc.session = session;
+				if acc.credentials == credentials {
+					continue;
+				}
+				acc.credentials = credentials;
 				if let Err(e) = state.persist(&store) {
 					eprintln!("failed to persist refreshed session: {e}");
 				}
@@ -43,6 +51,20 @@ pub(crate) fn spawn_signing_key_watch(
 			}
 		}
 	});
+}
+
+pub(crate) async fn ensure_session_token(
+	client: &GrindrClient,
+) -> Result<(), String> {
+	let token_missing = client
+		.session_receiver()
+		.borrow()
+		.as_ref()
+		.is_some_and(|session| session.token.is_none());
+	if token_missing {
+		client.refresh_session().await.map_err(|e| e.to_string())?;
+	}
+	Ok(())
 }
 
 pub(crate) async fn set_active_client(
@@ -81,14 +103,18 @@ pub(crate) async fn activate_stored_with_device(
 	id: &str,
 	device: DeviceInfo,
 ) -> Result<(), String> {
-	let (session, signing_key) = {
+	let (credentials, signing_key) = {
 		let store = state.store.lock().await;
 		store
 			.accounts
 			.iter()
 			.find(|a| a.id == id)
-			.map(|a| (a.session.clone(), a.signing_key.clone()))
+			.map(|a| (a.credentials.clone(), a.signing_key.clone()))
 			.ok_or_else(|| format!("account not found: {id}"))?
+	};
+	let session = Session {
+		credentials,
+		token: None,
 	};
 	let client =
 		GrindrClient::new(device, Some(session)).map_err(|e| e.to_string())?;

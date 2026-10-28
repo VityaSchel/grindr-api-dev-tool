@@ -3,7 +3,7 @@ mod requests;
 
 use std::time::Duration;
 
-use grindr::{requires_device_signature, DeviceInfo, Method};
+use grindr::DeviceInfo;
 use serde::Serialize;
 
 use crate::state::AppState;
@@ -30,11 +30,6 @@ pub(crate) fn generate_device() -> DeviceInfo {
 }
 
 #[tauri::command]
-pub(crate) fn requires_signature(path: String) -> bool {
-	requires_device_signature(&path)
-}
-
-#[tauri::command]
 pub(crate) async fn stat_file(path: String) -> Result<FileMeta, String> {
 	let meta = tokio::fs::metadata(&path)
 		.await
@@ -57,7 +52,7 @@ pub(crate) async fn fetch_openapi(
 	let fetch = async {
 		let resp = state
 			.openapi_client
-			.request(Method::GET, OPENAPI_URL)
+			.get(OPENAPI_URL)
 			.send()
 			.await
 			.map_err(|e| e.to_string())?;

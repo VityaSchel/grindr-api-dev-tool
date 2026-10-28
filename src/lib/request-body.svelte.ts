@@ -33,15 +33,13 @@ export class RequestBodyModel {
 
 	readonly #spec: RequestBody;
 
-	constructor(spec: RequestBody, path: string) {
+	constructor(spec: RequestBody, signed: boolean) {
 		this.#spec = spec;
 		this.contentType = Object.keys(spec.content)[0];
 		this.jsonSchema = spec.content["application/json"]?.schema;
 		this.binaryContentType = binaryBodyContentType(spec);
 		this.fileContentType = this.binaryContentType ?? "";
-		void api.requiresSignature(path).then((required) => {
-			this.signed = required;
-		});
+		this.signed = signed;
 	}
 
 	// `SchemaField` edits `model` in place, so a mirror kept on write goes stale.

@@ -5,7 +5,9 @@ export type SignInForm = {
 	email: string;
 	authToken: string;
 	password: string;
+	captchaToken: string;
 	googleToken: string;
+	facebookToken: string;
 };
 
 export function emptySignInForm(): SignInForm {
@@ -14,7 +16,9 @@ export function emptySignInForm(): SignInForm {
 		email: "",
 		authToken: "",
 		password: "",
+		captchaToken: "",
 		googleToken: "",
+		facebookToken: "",
 	};
 }
 
@@ -30,12 +34,21 @@ export function toCredentials(form: SignInForm): SignInCredentials | null {
 		case "password": {
 			const email = form.email.trim();
 			return email && form.password
-				? { method: "password", email, password: form.password }
+				? {
+						method: "password",
+						email,
+						password: form.password,
+						captchaToken: form.captchaToken.trim() || null,
+					}
 				: null;
 		}
 		case "google": {
 			const googleToken = form.googleToken.trim();
 			return googleToken ? { method: "google", googleToken } : null;
+		}
+		case "facebook": {
+			const facebookToken = form.facebookToken.trim();
+			return facebookToken ? { method: "facebook", facebookToken } : null;
 		}
 	}
 }

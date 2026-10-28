@@ -2,6 +2,7 @@ use grindr::Method;
 use serde::{Deserialize, Serialize};
 use tokio::sync::oneshot;
 
+use crate::session::ensure_session_token;
 use crate::state::AppState;
 
 #[derive(Serialize)]
@@ -68,43 +69,32 @@ async fn perform_request(
 	body: Option<serde_json::Value>,
 	body_file: Option<BodyFile>,
 ) -> Result<ResponsePayload, String> {
-	let file_body = match body_file {
-		Some(bf) => {
-			let bytes = tokio::fs::read(&bf.path)
-				.await
-				.map_err(|e| format!("could not read {}: {e}", bf.path))?;
-			Some((bytes, bf.content_type, bf.signed))
+	let active_client = state.active_client.lock().await.clone();
+	let mut request = match &active_client {
+		Some(client) => {
+			ensure_session_token(client).await?;
+			client.request(method, path)
 		}
-		None => None,
-	};
-
-	let client = state.active_client.lock().await.clone();
-	let resp = match (client, file_body) {
-		(Some(client), Some((bytes, content_type, true))) => {
-			client
-				.request_signed_bytes(method, path, &content_type, bytes)
-				.await
-		}
-		(Some(client), Some((bytes, content_type, false))) => {
-			client
-				.request_authenticated_bytes(method, path, &content_type, bytes)
-				.await
-		}
-		(Some(client), None) => {
-			client.request_authenticated_raw(method, path, body).await
-		}
-		(None, Some(_)) => {
+		None if body_file.is_some() => {
 			return Err("Select an account to upload a file.".to_string());
 		}
-		(None, None) => {
-			state
-				.noauth_client
-				.request_no_auth_raw(method, path, body)
-				.await
-		}
-	}
-	.map_err(|e| e.to_string())?;
+		None => state.noauth_client.request(method, path).unauthenticated(),
+	};
 
+	if let Some(file) = body_file {
+		let bytes = tokio::fs::read(&file.path)
+			.await
+			.map_err(|e| format!("could not read {}: {e}", file.path))?;
+		request = if file.signed {
+			request.signed_bytes(&file.content_type, bytes)
+		} else {
+			request.bytes(&file.content_type, bytes)
+		};
+	} else if let Some(body) = body {
+		request = request.json(&body);
+	}
+
+	let resp = request.send().await.map_err(|e| e.to_string())?;
 	Ok(ResponsePayload {
 		status: resp.status,
 		body: String::from_utf8_lossy(&resp.body).into_owned(),

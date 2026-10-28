@@ -273,6 +273,12 @@ export function binaryBodyContentType(
 	return undefined;
 }
 
+export function requiresDeviceSignature(op: Operation): boolean {
+	return op.parameters.some(
+		(p) => p.in === "header" && p.name.toLowerCase() === "x-sig",
+	);
+}
+
 // ─── Type labels ─────────────────────────────────────────────────────────────
 
 /** Extract a human-readable type label from a schema object (non-linking). */

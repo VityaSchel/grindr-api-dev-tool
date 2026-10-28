@@ -23,6 +23,9 @@
 	const dismissable = $derived(!submitting);
 
 	const credentials = $derived(toCredentials(form));
+	const sendsGeohash = $derived(
+		!(credentials?.method === "password" && credentials.captchaToken),
+	);
 
 	async function regenerateDevice() {
 		loadingDevice = true;
@@ -54,8 +57,7 @@
 		const creds = credentials;
 		if (!creds) return;
 
-		// Google has no email to dedupe on; the backend upserts it by profile id.
-		if (creds.method !== "google") {
+		if ("email" in creds) {
 			const normalizedEmail = creds.email.toLowerCase();
 			if (
 				accounts.accounts.some(
@@ -69,7 +71,11 @@
 
 		submitting = true;
 		try {
-			await accounts.add(creds, device, geohash.trim() || null);
+			await accounts.add(
+				creds,
+				device,
+				sendsGeohash ? geohash.trim() || null : null,
+			);
 			open = false;
 		} catch (err) {
 			error = String(err);
@@ -119,10 +125,15 @@
 								bind:value={geohash}
 								placeholder="e.g. 9q8yyk8yuv"
 								autocomplete="off"
+								disabled={!sendsGeohash}
 							/>
 							<p class="text-xs text-muted-foreground">
-								Sent only with the sign-in request. Leave empty
-								to omit.
+								{#if sendsGeohash}
+									Sent only with the sign-in request. Leave
+									empty to omit.
+								{:else}
+									Not sent with a reCAPTCHA sign-in.
+								{/if}
 							</p>
 						</div>
 

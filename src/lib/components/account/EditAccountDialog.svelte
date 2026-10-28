@@ -5,9 +5,10 @@
 	import {
 		type AccountInfo,
 		api,
+		type Credentials,
 		type DeviceInfo,
-		type Session,
 		type SessionRestriction,
+		type SessionToken,
 	} from "$lib/api";
 	import CopyButton from "$lib/components/CopyButton.svelte";
 	import { Button } from "$lib/components/ui/button";
@@ -21,7 +22,8 @@
 		account,
 	}: { open?: boolean; account: AccountInfo | null } = $props();
 
-	let session = $state<Session | null>(null);
+	let credentials = $state<Credentials | null>(null);
+	let token = $state<SessionToken | null>(null);
 	let device = $state<DeviceInfo | null>(null);
 	let revealed = $state(false);
 	let loadingDevice = $state(false);
@@ -32,7 +34,8 @@
 	$effect(() => {
 		const id = open ? account?.id : undefined;
 		loadSeq += 1;
-		session = null;
+		credentials = null;
+		token = null;
 		device = null;
 		revealed = false;
 		error = null;
@@ -43,7 +46,8 @@
 		try {
 			const details = await api.accountDetails(id);
 			if (seq !== loadSeq) return;
-			session = details.session;
+			credentials = details.credentials;
+			token = details.token;
 			device = details.device;
 		} catch (e) {
 			if (seq === loadSeq) error = String(e);
@@ -82,38 +86,50 @@
 		"Auth token",
 	].map((label) => ({ label, value: "", secret: false }));
 
-	const rows = $derived(
-		session
+	const tokenRows = $derived(
+		token
 			? [
 					{
-						label: "Profile ID",
-						value: session.profile_id,
-						secret: false,
-					},
-					{ label: "Email", value: session.email, secret: false },
-					{ label: "Sign-in", value: session.kind, secret: false },
-					{
 						label: "Expires",
-						value: expiry(session.expires_at),
+						value: expiry(token.expires_at),
 						secret: false,
 					},
-					...(session.restriction
+					...(token.restriction
 						? [
 								{
 									label: "Restriction",
-									value: restriction(session.restriction),
+									value: restriction(token.restriction),
 									secret: false,
 								},
 							]
 						: []),
 					{
 						label: "Session ID",
-						value: session.session_id,
+						value: token.session_id,
 						secret: true,
 					},
+				]
+			: [],
+	);
+
+	const rows = $derived(
+		credentials
+			? [
+					{
+						label: "Profile ID",
+						value: credentials.profile_id ?? "—",
+						secret: false,
+					},
+					{ label: "Email", value: credentials.email, secret: false },
+					{
+						label: "Sign-in",
+						value: credentials.kind,
+						secret: false,
+					},
+					...tokenRows,
 					{
 						label: "Auth token",
-						value: session.auth_token,
+						value: credentials.auth_token,
 						secret: true,
 					},
 				]
@@ -151,7 +167,7 @@
 					variant="ghost"
 					size="xs"
 					onclick={() => (revealed = !revealed)}
-					disabled={!session}
+					disabled={!credentials}
 				>
 					{#if revealed}
 						<EyeSlashIcon /> Hide secrets
@@ -165,7 +181,7 @@
 					<span class="w-20 shrink-0 text-xs text-muted-foreground">
 						{row.label}
 					</span>
-					{#if session}
+					{#if credentials}
 						<span
 							class="min-w-0 flex-1 truncate font-mono text-xs select-text"
 						>

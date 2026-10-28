@@ -11,7 +11,11 @@
 	import * as Tabs from "$lib/components/ui/tabs";
 	import { API_BASE_URL, grindrApiHref } from "$lib/links";
 	import { methodColor } from "$lib/methods";
-	import { getParamGroupsForTag, resolveGroupParams } from "$lib/openapi";
+	import {
+		getParamGroupsForTag,
+		requiresDeviceSignature,
+		resolveGroupParams,
+	} from "$lib/openapi";
 	import { RequestBodyModel } from "$lib/request-body.svelte";
 	import { buildRequestPath, parseRequestPath } from "$lib/request-path";
 	import type { Operation, Param } from "$lib/openapi";
@@ -52,7 +56,9 @@
 	const queryModel = $state<Record<string, unknown>>({});
 	let unknownQuery = $state<string[]>([]);
 	const body = $derived(
-		op.requestBody ? new RequestBodyModel(op.requestBody, path) : null,
+		op.requestBody
+			? new RequestBodyModel(op.requestBody, requiresDeviceSignature(op))
+			: null,
 	);
 
 	let tab = $state("params");
