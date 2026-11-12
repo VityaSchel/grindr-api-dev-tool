@@ -76,6 +76,13 @@ export type SchemaObject = {
 		properties?: Record<string, SchemaObject>;
 		allOf?: Array<{ $ref: string }>;
 	}>;
+	"x-discriminator"?: SiblingDiscriminator;
+};
+
+/** Picks a union property's shape from the value of a sibling property. */
+export type SiblingDiscriminator = {
+	propertyName: string;
+	mapping: Record<string, string>;
 };
 
 export type Param = {

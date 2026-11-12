@@ -1,6 +1,7 @@
 <script lang="ts">
 	import PlusIcon from "phosphor-svelte/lib/PlusIcon";
 	import TrashIcon from "phosphor-svelte/lib/TrashIcon";
+	import { untrack } from "svelte";
 
 	import Markdown from "$lib/components/Markdown.svelte";
 	import { Button } from "$lib/components/ui/button";
@@ -18,6 +19,7 @@
 	} from "$lib/openapi";
 	import { stringifyValue } from "$lib/utils";
 	import SchemaField from "./SchemaField.svelte";
+	import VariantSelect from "./VariantSelect.svelte";
 
 	type Props = {
 		schema: SchemaObject;
@@ -31,6 +33,8 @@
 		present?: boolean;
 		/** Toggle inclusion in the parent; absent ⇒ not togglable (root / array item). */
 		setPresent?: (b: boolean) => void;
+		/** The parent object's value, read by an `x-discriminator` on this field. */
+		siblings?: Record<string, unknown>;
 		depth?: number;
 	};
 
@@ -71,29 +75,33 @@
 
 	/** Resolve `$ref` and flatten `allOf` into a single inspectable schema. */
 	function normalizeSchema(s: SchemaObject): SchemaObject {
-		let cur = s;
-		if (cur.$ref) cur = (resolveRef(cur.$ref) as SchemaObject) ?? {};
-		if (cur.allOf?.length) {
-			const merged: SchemaObject = {
-				type: "object",
-				properties: {},
-				required: [],
-			};
-			for (const sub of cur.allOf) {
-				const ns = normalizeSchema(sub);
-				Object.assign(merged.properties!, ns.properties ?? {});
-				merged.required = [
-					...(merged.required ?? []),
-					...(ns.required ?? []),
-				];
-				if (ns.type) merged.type = ns.type;
-				if (ns.description && !merged.description)
-					merged.description = ns.description;
-			}
-			Object.assign(merged.properties!, cur.properties ?? {});
-			return merged;
+		const cur = s.$ref
+			? ((resolveRef(s.$ref) as SchemaObject | undefined) ?? {})
+			: s;
+		if (!cur.allOf?.length) return cur;
+
+		const merged: SchemaObject = {};
+		for (const part of cur.allOf.map(normalizeSchema)) {
+			mergeShape(merged, part);
+			merged.type ??= part.type;
+			merged.format ??= part.format;
+			merged.enum ??= part.enum;
+			merged["x-enum-labels"] ??= part["x-enum-labels"];
+			merged.items ??= part.items;
+			merged.oneOf ??= part.oneOf;
+			merged.anyOf ??= part.anyOf;
+			merged.description ||= part.description;
 		}
-		return cur;
+		mergeShape(merged, cur);
+		if (merged.properties) merged.type ??= "object";
+		return merged;
+	}
+
+	function mergeShape(into: SchemaObject, part: SchemaObject) {
+		if (part.properties)
+			into.properties = { ...into.properties, ...part.properties };
+		if (part.required)
+			into.required = [...(into.required ?? []), ...part.required];
 	}
 
 	/** The name of a referenced type (e.g. "Geohash"), if the raw schema is a ref. */
@@ -149,6 +157,7 @@
 		required = false,
 		present = true,
 		setPresent = undefined,
+		siblings = undefined,
 		depth = 0,
 	}: Props = $props();
 
@@ -226,6 +235,44 @@
 	// ── oneOf/anyOf ──
 	const variants = $derived(resolved.oneOf ?? resolved.anyOf ?? []);
 	let variantIdx = $state(0);
+	const discriminator = $derived(schema["x-discriminator"]);
+	const discriminatorKey = $derived.by(() => {
+		const v = discriminator
+			? siblings?.[discriminator.propertyName]
+			: undefined;
+		return typeof v === "string" || typeof v === "number"
+			? String(v)
+			: undefined;
+	});
+	const mappedVariant = $derived.by((): SchemaObject | undefined => {
+		const ref = discriminatorKey
+			? discriminator?.mapping[discriminatorKey]
+			: undefined;
+		return ref ? { $ref: ref } : undefined;
+	});
+	const activeVariant = $derived(
+		discriminator ? mappedVariant : variants[variantIdx],
+	);
+	const noShapeToEdit = $derived(!!discriminator && !mappedVariant);
+	const shapeNote = $derived.by(() => {
+		if (!discriminator) return undefined;
+		const by = `\`${discriminator.propertyName}\``;
+		if (mappedVariant)
+			return `Shape follows ${by}: ${variantLabel(mappedVariant, 0)}`;
+		if (!discriminatorKey) return `Pick ${by} first.`;
+		return `No shape for ${by} \`${discriminatorKey}\`.`;
+	});
+
+	function startVariant(variant: SchemaObject | undefined) {
+		edit(variant ? typedBlank(variant) : nullable ? null : undefined);
+	}
+
+	let shapedFor = untrack(() => discriminatorKey);
+	$effect(() => {
+		if (!discriminator || discriminatorKey === shapedFor) return;
+		shapedFor = discriminatorKey;
+		if (present) untrack(() => startVariant(mappedVariant));
+	});
 
 	function onString(e: Event & { currentTarget: HTMLInputElement }) {
 		const v = e.currentTarget.value;
@@ -239,7 +286,7 @@
 	}
 	function setNull(p: boolean) {
 		// Un-nulling must yield an editable value, not `null` again.
-		edit(p ? null : typedBlank(resolved));
+		edit(p ? null : typedBlank(activeVariant ?? resolved));
 	}
 </script>
 
@@ -305,7 +352,7 @@
 			size="sm"
 			variant="outline"
 			pressed={isNull}
-			{disabled}
+			disabled={disabled || (isNull && noShapeToEdit)}
 			onPressedChange={setNull}
 			class={[
 				"h-8 shrink-0 px-1.5 font-mono text-[0.65rem] tracking-wide",
@@ -318,14 +365,18 @@
 	{/if}
 {/snippet}
 
+{#snippet headerRow()}
+	{#if label !== undefined || nullable}
+		<div class="flex items-start justify-between gap-1.5">
+			<div class="min-w-0 flex-1">{@render fieldHeader()}</div>
+			{@render nullToggle()}
+		</div>
+	{/if}
+{/snippet}
+
 {#if kind === "object"}
 	<div class="flex flex-col gap-2">
-		{#if label !== undefined || nullable}
-			<div class="flex items-start justify-between gap-1.5">
-				<div class="min-w-0 flex-1">{@render fieldHeader()}</div>
-				{@render nullToggle()}
-			</div>
-		{/if}
+		{@render headerRow()}
 		{#if present && !isNull && objValue}
 			{#if objProps.length}
 				<!-- Only the properties are indented under the object, not its header. -->
@@ -350,6 +401,7 @@
 									delete objValue[propName];
 								}
 							}}
+							siblings={objValue}
 							depth={depth + 1}
 							value={objValue[propName]}
 							setValue={(v) => (objValue[propName] = v)}
@@ -365,12 +417,7 @@
 	</div>
 {:else if kind === "array"}
 	<div class="flex flex-col gap-2">
-		{#if label !== undefined || nullable}
-			<div class="flex items-start justify-between gap-1.5">
-				<div class="min-w-0 flex-1">{@render fieldHeader()}</div>
-				{@render nullToggle()}
-			</div>
-		{/if}
+		{@render headerRow()}
 		{#if present && !isNull}
 			{#if arrValue && arrValue.length}
 				<div class="flex flex-col gap-2 border-l border-muted pl-3">
@@ -412,30 +459,25 @@
 	</div>
 {:else if kind === "oneOf"}
 	<div class="flex flex-col gap-2">
-		{@render fieldHeader()}
+		{@render headerRow()}
 		{#if present}
-			<span class="text-xs text-muted-foreground">
-				Accepts {variants.length} shapes — pick the one to send:
-			</span>
-			<Select.Root
-				type="single"
-				value={String(variantIdx)}
-				onValueChange={(v) => (variantIdx = Number(v))}
-			>
-				<Select.Trigger class="w-full">
-					{variantLabel(variants[variantIdx], variantIdx)}
-				</Select.Trigger>
-				<Select.Content>
-					{#each variants as variant, i (i)}
-						<Select.Item value={String(i)}>
-							{variantLabel(variant, i)}
-						</Select.Item>
-					{/each}
-				</Select.Content>
-			</Select.Root>
-			{#if variants[variantIdx]}
+			{#if shapeNote}
+				<div class="text-xs text-muted-foreground">
+					<Markdown text={shapeNote} inline />
+				</div>
+			{:else}
+				<VariantSelect
+					labels={variants.map(variantLabel)}
+					selected={variantIdx}
+					onSelect={(i) => {
+						variantIdx = i;
+						startVariant(variants[i]);
+					}}
+				/>
+			{/if}
+			{#if activeVariant && !isNull}
 				<SchemaField
-					schema={variants[variantIdx]}
+					schema={activeVariant}
 					{value}
 					{setValue}
 					depth={depth + 1}
