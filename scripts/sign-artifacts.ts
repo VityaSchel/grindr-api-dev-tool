@@ -7,9 +7,9 @@ import {
 	bundleDirs,
 	DIST,
 	findArtifacts,
+	nameArtifact,
 	readManifest,
 	RELEASE_DIR,
-	targetName,
 } from "./artifacts";
 
 const untilde = (file: string) => file.replace(/^~/, homedir());
@@ -36,11 +36,12 @@ function collect(): string[] {
 
 	const collected: string[] = [];
 	for (const source of sources) {
-		const target = targetName(source, manifest);
-		if (!target) {
-			console.warn(`skipped (no architecture in name): ${source}`);
+		const naming = nameArtifact(source, manifest);
+		if ("skipReason" in naming) {
+			console.warn(`skipped (${naming.skipReason}): ${source}`);
 			continue;
 		}
+		const { target } = naming;
 		const destination = path.join(RELEASE_DIR, target);
 		if (existsSync(destination)) {
 			throw new Error(

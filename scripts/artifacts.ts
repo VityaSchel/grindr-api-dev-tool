@@ -71,7 +71,14 @@ function archOf(file: string): string | undefined {
 	return token ? CANONICAL_ARCH[token] : undefined;
 }
 
-export function targetName(
+function namesVersion(file: string, version: string): boolean {
+	const escaped = version.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+	return new RegExp(`(^|[^0-9.])${escaped}([^0-9]|$)`).test(
+		path.basename(file),
+	);
+}
+
+function targetName(
 	file: string,
 	{ stem, version }: Manifest,
 ): string | undefined {
@@ -80,6 +87,16 @@ export function targetName(
 	if (!extension || !arch) return undefined;
 	const spelling = ARCH_SPELLING[extension][arch];
 	return spelling ? `${stem}-${version}.${spelling}.${extension}` : undefined;
+}
+
+export type Naming = { target: string } | { skipReason: string };
+
+export function nameArtifact(file: string, manifest: Manifest): Naming {
+	if (!namesVersion(file, manifest.version)) {
+		return { skipReason: `not version ${manifest.version}` };
+	}
+	const target = targetName(file, manifest);
+	return target ? { target } : { skipReason: "no architecture in name" };
 }
 
 function isBundledDirectory(entry: string): boolean {

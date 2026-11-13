@@ -4,10 +4,10 @@ import path from "node:path";
 import {
 	bundleDirs,
 	findArtifacts,
+	nameArtifact,
 	type Platform,
 	PLATFORMS,
 	readManifest,
-	targetName,
 } from "./artifacts";
 
 function main(platform?: Platform): void {
@@ -17,11 +17,12 @@ function main(platform?: Platform): void {
 
 	for (const dir of bundleDirs(platform)) {
 		for (const file of findArtifacts(dir)) {
-			const target = targetName(file, manifest);
-			if (!target) {
-				console.warn(`skipped (no architecture in name): ${file}`);
+			const naming = nameArtifact(file, manifest);
+			if ("skipReason" in naming) {
+				console.warn(`skipped (${naming.skipReason}): ${file}`);
 				continue;
 			}
+			const { target } = naming;
 			if (path.basename(file) === target) {
 				kept += 1;
 				continue;
